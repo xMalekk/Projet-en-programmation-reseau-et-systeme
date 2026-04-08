@@ -330,26 +330,6 @@ class Engine:
                 self.game_pause = not self.game_pause
             elif key == 'c':
                 self.change_view(2)
-            elif key == 't':
-                self.game_map.save_file(self.scenario_name, self.ia1.name, self.ia2.name)
-            elif key == 'y':
-                self.stop()
-                name = "autosave"
-                name = name[:-5] if name.endswith("_save") else name
-                if os.path.exists(f"data/savedata/{name}_engine_data.txt"):
-                    with open(f"data/savedata/{name}_engine_data.txt", "r") as f:
-                        data = f.read().split("\n")
-                        line = data[0].split(',')
-                        scenario, ia1, ia2 = str(line[0]), str(line[1]), str(line[2])
-                else:
-                    scenario, ia1, ia2 = "stest1", "major_daft", "major_daft"
-                    name = "stest1"
-
-                print(f"[LOAD] Loading saved battle from: {name}_save")
-                print(f"      ias: {ia1} vs {ia2}")
-                view_type = 2
-                engine = Engine(name, ia1, ia2, view_type)
-                engine.start()
         pass
 
 
@@ -406,42 +386,14 @@ class Engine:
                 self.game_pause = not self.game_pause
             if a["quit"]:
                 self.end_battle()
-            if a["quicksave"]:
-                self.game_map.save_file(self.scenario_name, self.ia1.name, self.ia2.name)
-            
-            if a["quickload"]:
-                self.stop()
-                name="autosave"
-                name=name[:-5] if name.endswith("_save") else name
-                if os.path.exists(f"data/savedata/{name}_engine_data.txt"):
-                    with open(f"data/savedata/{name}_engine_data.txt", "r") as f:
-                        data = f.read().split("\n")
-                        line = data[0].split(',')
-                        scenario,ia1,ia2 = str(line[0]) ,str(line[1]),str(line[2])
-                else:
-                    scenario,ia1,ia2 = "stest1","major_daft","major_daft"
-                    name="stest1"
-                    
-                print(f"[LOAD] Loading saved battle from: {name}_save")
-                print(f"      ias: {ia1} vs {ia2}")
-                view_type = 2
-                engine = Engine(name, ia1, ia2, view_type)
-                engine.start()
 
             if a["increase_speed"]:
                 self.tps += 10
                 print(self.tps)
-                pass
 
             if a["decrease_speed"]:
                 self.tps -= 10
                 print(self.tps)
-
-                pass
-            if a["generate_rapport"]:
-                self.rapport_in_game()
-
-        pass
 
 
 
