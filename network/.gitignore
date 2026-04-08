@@ -1,0 +1,7 @@
+﻿/build/
+/out/
+/.vs/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+*.exe
