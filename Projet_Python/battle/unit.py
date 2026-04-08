@@ -6,9 +6,10 @@ class Unit:
     #on crée une variable dans laquelle on met le contenu de units.json ; agit comme une mémoire cache qui nous évite d'avoir à rouvrir le fichier chaque fois qu'on a besoin de piocher des données dedans
     UNIT_CONFIG = {}
 
-    def __init__(self, hp=None, attacks=None, armors=None, pierce_armor=None, range=None, range_min = None, line_of_sight=None,
+    def __init__(self, id, hp=None, attacks=None, armors=None, pierce_armor=None, range=None, range_min = None, line_of_sight=None,
                  speed=None, build_time=None, attack_delay=None, reload_time=None,team=None, type=None, position=(None,None)):
         #On différencie les HP max, des HP actuels
+        self.id = id
         self.type = type
         self.max_hp = hp
         self.current_hp = hp
@@ -53,10 +54,13 @@ class Unit:
         # print(f"Unités chargées depuis {path}.")
 
     #méthode permettant de créer les objets unités
-    def get_by_type(self, type, team, position):
+    def get_by_type(self, id, type, team, position):
         # Chargement automatique si UNIT_CONFIG vide
         if self.UNIT_CONFIG == {}:
             self.load_unit_data()
+
+        # ID
+        self.id = id
 
         # Récupération des données dans UNIT_CONFIG
         data = self.UNIT_CONFIG[type]

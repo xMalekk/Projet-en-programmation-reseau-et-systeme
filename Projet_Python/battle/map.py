@@ -8,8 +8,9 @@ from battle.scenario import Scenario
 
 
 class Map:
-    def __init__(self, p=50, q=50):
+    def __init__(self, team,  p=50, q=50):
         """Initialise une carte de taille p x q"""
+        self.team = team
         self.p = p
         self.q = q
         self.map = defaultdict(lambda: None, {})
@@ -36,17 +37,17 @@ class Map:
 
     marge = 1.01  # Facteur de marge pour la détection de collision (pour éviter que les unités se touchent de trop près)
 
-    def add_unit(self, x, y, type, team):
+    def add_unit(self, x, y, type, id):
         """Permet d'ajouter une unité à la carte aux coordonnées (x, y)"""
-        unit = Unit().get_by_type(type, team, (x, y))
+        unit = Unit().get_by_type(type, self.team, (x, y))
         if unit.size <= x < self.p - unit.size and unit.size <= y < self.q - unit.size:
             for pos, other_unit in self.map.items():
                 if other_unit is not None:
                     dist = self.distance((x, y), pos)
                     if dist < self.marge * (unit.size + other_unit.size):
                         return  # Collision détecté, n'ajoute pas l'unité
-            self.map[(x, y)] = Unit().get_by_type(type, team, (x, y))
-            send_event_event(1,[team, type, (x,y)])
+            self.map[(x, y)] = Unit().get_by_type(id, type, self.team, (x, y))
+            
 
     #def get_unit(self, x, y):
     #    """Permet de récupérer l'unité à la position (x, y)"""
@@ -59,99 +60,18 @@ class Map:
 
     def load(self, scenario_name):
         """"Charge une carte depuis un scénario donné ou un fichier de sauvegarde"""
-
-        if "lanchester" in scenario_name:
-            self.load_lanchester(scenario_name)
-        elif "save" in scenario_name:
-            self.load_file(scenario_name)
-        else:
-            self.load_scenario(scenario_name)
-
-    def load_scenario(self, scenario_name):
-        """"Charge une carte depuis un scénario donné"""
-
         size, scenario = Scenario().get_list_by_name(scenario_name)
         newp, newq = size
         self.p, self.q = newp, newq
-        for x, y, type in scenario:
-            self.add_unit(x, y, type, 'R')
-            self.add_unit(self.p - x, y, type, 'B')
+        for i in range(len(scenario)):
+            x, y, type = scenario[i]
+            id = str(self.team) + i
+            self.add_unit(x, y, type, id)
 
-    def load_lanchester(self, scenario_name):
-        """"Charge une carte depuis un scénario de type lanchester donné"""
-
-        size, scenario = Scenario().get_list_by_name(scenario_name)
-        newp, newq = size
-        self.p, self.q = newp, newq
-        for x, y, type in scenario:
-            if x < self.p // 2:
-                self.add_unit(x, y, type, 'R')
-            else:
-                self.add_unit(x, y, type, 'B')
 
     #############################
     # Partie Gestion de Fichier #
-    #############################
-
-    def load_file(self, name="autosave"):
-        self.marge = 0  # Désactive la marge de collision lors du chargement
-        """"Charge une carte depuis un fichier texte"""
-        name = name[:-5] if name.endswith("_save") else name
-        with open(f"data/save/{name}_save.txt", "r") as f:
-            data = f.read().split("\n")
-
-            line = data[0].split(',')
-            self.p, self.q = int(line[0]), int(line[1])
-
-            for line in data[1:]:
-                line = line.split(',')
-                if len(line) < 4:
-                    continue
-                self.add_unit(float(line[0]), float(line[1]), line[2], line[3])
-
-        if os.path.exists(f"data/savedata/{name}_data.txt"):
-            with open(f"data/savedata/{name}_data.txt", "r") as f:
-                data = f.read().split("\n")
-
-                for line in data:
-                    line = line.split(',')
-                    if len(line) < 7:
-                        continue
-                    pos = (float(line[0]), float(line[1]))
-                    self.map[pos].current_hp = float(line[2])
-                    self.map[pos].is_alive = bool(line[4])
-                    self.map[pos].state = line[5]
-                    self.map[pos].time_until_next_attack = float(line[6])
-
-                for line in data:
-                    line = line.split(',')
-                    if len(line) < 9:
-                        continue
-                    pos = (float(line[0]), float(line[1]))
-                    if float(line[7]) == -1 and float(line[8]) == -1:
-                        self.map[pos].target = None
-                    else:
-                        self.map[pos].target = self.map.pop((float(line[7]), float(line[8])), None)
-        self.marge = 1.01  # Réactive la marge de collision après le chargement
-
-    def save_file(self, scenario="stest1", ia1="major_daft", ia2="major_daft", name="autosave"):
-        """Sauvegarde la carte actuelle dans un fichier texte"""
-        with open(f"data/save/{name}_save.txt", "w") as f:
-            f.write(f"{self.p},{self.q}\n")
-            for (x, y), unit in self.map.items():
-                f.write(f"{x},{y},{unit.type},{unit.team}\n")
-
-        with open(f"data/savedata/{name}_engine_data.txt", "w") as f:
-            f.write(f"{scenario},{ia1},{ia2}\n")
-
-        with open(f"data/savedata/{name}_data.txt", "w") as f:
-            for (x, y), unit in self.map.items():
-                if unit.target is not None:
-                    a, b = unit.target.position[0], unit.target.position[1]
-                else:
-                    a, b = -1, -1
-                f.write(
-                    f"{x},{y},{unit.current_hp},{unit.is_alive},{unit.state},{unit.time_until_next_attack},{a},{b}\n")
+    ############################
 
     def __repr__(self):
         return f"Map({repr(self.map)})"
@@ -240,7 +160,6 @@ class Map:
             next_y = unit_position_y + y_step
             next_pos = (next_x, next_y)
             self.maj_unit_posi(unit, next_pos)
-            send_event_event(2,[(unit_position_x,unit_position_y),next_pos])
 
             unit.direction = (dir_x, dir_y)  # mettre a jour la direction
             if depth == 0:
@@ -373,7 +292,6 @@ class Map:
 
         unit.time_reset()
         target.take_damage(unit)
-        send_event_event(4,[target,unit])
         # set cooldown
 
         return
