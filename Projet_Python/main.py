@@ -6,7 +6,7 @@ import argparse
 import sys
 import os
 
-from battle.engine import Engine
+from battle.engine2 import Engine
 from battle.scenario import Scenario
 from ia.registry import AI_REGISTRY
 global tps
@@ -16,7 +16,8 @@ if not os.path.exists("data/scenario"):
 
 def help():
     print("Utilisation : battle <commande> [options]")
-    print("battle run <scenario> <ia1> <ia2> / Lancer une bataille entre deux IA")
+    print("battle create <scenario> <ia> / Crée une carte avec une armée")
+    print("battle join <IP> <ia> / Rejoins une partie")
     print("")
     
     print("Liste des scénarios disponibles :")
@@ -31,30 +32,31 @@ def help():
         print(f" - {key}")
     print("")
     
-    print("Exemple de commandes :")
-    print("python3 main.py battle run stest6 smartia  Major_DAFT")
-    print("python3 main.py battle tournament")
-    print("python3 main.py battle load stest1 (ou stest1_save)")
+    # print("Exemple de commandes :")
+    # print("python3 main.py battle run stest6 smartia  Major_DAFT")
+    # print("python3 main.py battle tournament")
+    # print("python3 main.py battle load stest1 (ou stest1_save)")
 
 class BattleCLI:
     def __init__(self):
         parser = argparse.ArgumentParser(
             prog="battle",
-            description="Battle simulation CLI — run matches, load saves, tournaments, and plot results."
+            description="Battle simulation CLI — create or join a game."
         )
         subparsers = parser.add_subparsers(dest="command", required=True)
 
-        # === battle run <scenario> <ia1> <ia2> [-t] [-d DATAFILE] ===
-        run_parser = subparsers.add_parser("run", help="Launch a single battle between two ias.")
-        run_parser.add_argument("scenario", help="Scenario name or file to use")
-        run_parser.add_argument("ia1", help="Name of first ia")
-        run_parser.add_argument("ia2", help="Name of second ia")
-        run_parser.add_argument("-t", action="store_true", help="Launch terminal view instead of 2.5D")
-        run_parser.add_argument("--no-terminal", action="store_true", help="Launch no view")
+        # === battle create <scenario> <ia> ===
+        create_parser = subparsers.add_parser("create", help="Create a scenario with 1 ia.")
+        create_parser.add_argument("scenario", help="Scenario name or file to use")
+        create_parser.add_argument("ia", help="Name of ia")
 
-        run_parser.add_argument("-d", "--datafile", help="Write data output to this file (optional)")
-
+        # === battle join <IP> <ia> ===
+        join_parser = subparsers.add_parser("join", help="Join a game with 1 ia.")
+        join_parser.add_argument("IP", help="IP of the game to join")
+        join_parser.add_argument("ia", help="Name of ia")
+        
         self.parser = parser
+
 
     ### === Command dispatch ===
     def run(self):
@@ -69,66 +71,34 @@ class BattleCLI:
         else:
             sys.argv.pop(0)  # Retire le nom du script
 
-        if sys.argv[1] == "run":
+        if sys.argv[1] == "create":
             scenario_path = f"data/scenario/{sys.argv[2]}.txt"
-            lanchester_path = f"data/lanchester/{sys.argv[2]}.txt"
-            if not os.path.exists(scenario_path) and not os.path.exists(lanchester_path):
+            if not os.path.exists(scenario_path):
                 return print(f"Le scénario {sys.argv[2]} n'existe pas.")
 
         args = self.parser.parse_args()
         match args.command:
-            case "run":
-                self.cmd_run(args)
-            case "load":
-                self.cmd_load(args)
-            case "tournament":
-                self.cmd_tournament(args)
-            case "plot":
-                self.cmd_plot(args)
+            case "create":
+                self.cmd_create(args)
+            case "join":
+                self.cmd_join(args)
 
     # === Command implementations  ===
-    def cmd_run(self, args):
+    def cmd_create(self, args):
 
-        print(f"[RUN] Scenario: {args.scenario}")
-        print(f"      ias: {args.ia1} vs {args.ia2}")
-        if args.t:        print(f"Terminal view")
-        if args.datafile:
-            print(f"      Output data → {args.datafile}")
-        if args.no_terminal:
-            view_type = 0
-        elif args.t:
-            view_type = 1
-        else:
-            view_type = 2
-        engine = Engine(args.scenario, args.ia1, args.ia2, view_type)
+        print(f"[CREATE] Scenario: {args.scenario}")
+        print(f"      ia: {args.ia}")
+        view_type = 2
+        engine = Engine(args.scenario, args.ia, view_type, None)
         engine.start()
+    
+    def cmd_join(self, args):
 
-    def cmd_load(self, args):
-        name=args.savefile
-        name=name[:-5] if name.endswith("_save") else name
-        if os.path.exists(f"data/savedata/{name}_engine_data.txt"):
-            with open(f"data/savedata/{name}_engine_data.txt", "r") as f:
-                data = f.read().split("\n")
-                line = data[0].split(',')
-                scenario,ia1,ia2 = str(line[0]) ,str(line[1]),str(line[2])
-        else:
-            scenario,ia1,ia2 = "stest1","major_daft","major_daft"
-            name="stest1"
-            
-        print(f"[LOAD] Loading saved battle from: {name}_save")
-        print(f"      ias: {ia1} vs {ia2}")
-        if args.t:        print(f"Terminal view")
-        if args.datafile:
-            print(f"      Output data → {args.datafile}")
-        if args.no_terminal:
-            view_type = 0
-        elif args.t:
-            view_type = 1
-        else:
-            view_type = 2
-        engine = Engine(name, ia1, ia2, view_type)
+        print(f"[JOIN] IP: {args.IP}")
+        print(f"      ia: {args.ia}")
+        view_type = 2
+        engine = Engine(None, args.ia, view_type, args.IP)
         engine.start()
-
 
 
 if __name__ == "__main__":
