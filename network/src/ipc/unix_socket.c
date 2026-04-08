@@ -1,5 +1,5 @@
 // Backend IPC POSIX basé sur des sockets UNIX.
-// Fournit ipc_connection_* pour relier Python et le d�mon.
+// Fournit ipc_connection_* pour relier Python et le daemon.
 
 #include "medievail_net/ipc.h"
 #include "medievail_net/log.h"
