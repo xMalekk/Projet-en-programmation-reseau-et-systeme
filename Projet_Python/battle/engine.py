@@ -12,7 +12,6 @@ from random import randint
 from numpy import mean
 
 from ia.registry import AI_REGISTRY
-from reports.reporter import generate_report 
 
 def fix_string(string):
     """Transforme une chaîne de caractères en une version "fixe" (minuscules, sans espaces ou caractères spéciaux)"""
@@ -30,7 +29,7 @@ def get_key():
     Retourne une touche pressée sans bloquer.
     Fonctionne sous Windows et Linux/Mac.
     """
-    # 1) Windows
+    # 1 Windows
     if os.name == 'nt':
         import msvcrt
         if msvcrt.kbhit():
@@ -42,7 +41,7 @@ def get_key():
             except:
                 return None
         return None
-    # 2) Linux / Mac
+    # 2 Linux / Mac
     else:
         import select
         keys = ""
@@ -331,28 +330,6 @@ class Engine:
                 self.game_pause = not self.game_pause
             elif key == 'c':
                 self.change_view(2)
-            elif key == 'tab':
-                self.rapport_in_game()
-            elif key == 't':
-                self.game_map.save_file(self.scenario_name, self.ia1.name, self.ia2.name)
-            elif key == 'y':
-                self.stop()
-                name = "autosave"
-                name = name[:-5] if name.endswith("_save") else name
-                if os.path.exists(f"data/savedata/{name}_engine_data.txt"):
-                    with open(f"data/savedata/{name}_engine_data.txt", "r") as f:
-                        data = f.read().split("\n")
-                        line = data[0].split(',')
-                        scenario, ia1, ia2 = str(line[0]), str(line[1]), str(line[2])
-                else:
-                    scenario, ia1, ia2 = "stest1", "major_daft", "major_daft"
-                    name = "stest1"
-
-                print(f"[LOAD] Loading saved battle from: {name}_save")
-                print(f"      ias: {ia1} vs {ia2}")
-                view_type = 2
-                engine = Engine(name, ia1, ia2, view_type)
-                engine.start()
         pass
 
 
@@ -385,6 +362,7 @@ class Engine:
 
         self.initialize_view()
         self.update_view()
+
     def initialize_view(self):
         """Initialise la vue appropriée (terminal ou GUI)"""
         import visuals.terminal_view as term
@@ -408,42 +386,14 @@ class Engine:
                 self.game_pause = not self.game_pause
             if a["quit"]:
                 self.end_battle()
-            if a["quicksave"]:
-                self.game_map.save_file(self.scenario_name, self.ia1.name, self.ia2.name)
-            
-            if a["quickload"]:
-                self.stop()
-                name="autosave"
-                name=name[:-5] if name.endswith("_save") else name
-                if os.path.exists(f"data/savedata/{name}_engine_data.txt"):
-                    with open(f"data/savedata/{name}_engine_data.txt", "r") as f:
-                        data = f.read().split("\n")
-                        line = data[0].split(',')
-                        scenario,ia1,ia2 = str(line[0]) ,str(line[1]),str(line[2])
-                else:
-                    scenario,ia1,ia2 = "stest1","major_daft","major_daft"
-                    name="stest1"
-                    
-                print(f"[LOAD] Loading saved battle from: {name}_save")
-                print(f"      ias: {ia1} vs {ia2}")
-                view_type = 2
-                engine = Engine(name, ia1, ia2, view_type)
-                engine.start()
 
             if a["increase_speed"]:
                 self.tps += 10
                 print(self.tps)
-                pass
 
             if a["decrease_speed"]:
                 self.tps -= 10
                 print(self.tps)
-
-                pass
-            if a["generate_rapport"]:
-                self.rapport_in_game()
-
-        pass
 
 
 
@@ -498,10 +448,6 @@ class Engine:
         """Termine la bataille et affiche les résultats"""
         if self.view == 1 and not self.tournaments: self.update_view()
 
-        # Rapport Lanchester si applicable
-        if not self.tournaments and "lanchester" in self.scenario_name.lower():
-            self.rapport_lanchester()
-
         if not self.tournaments:
             print("\n=== Battle Ended ===")
             if self.winner:
@@ -544,104 +490,3 @@ class Engine:
     def stop(self):
         """Arrête complètement la simulation"""
         self.is_running = False
-
-    def rapport_lanchester(self):
-        """Génère un rapport spécifique pour les scénarios Lanchester."""
-        info = self.get_game_info()
-        filename = f"lanchester_report_{int(time.time())}.html"
-
-        # On s'assure que le dernier tour est enregistré
-        if not self.history['turns'] or self.history['turns'][-1] != self.current_turn:
-            red_alive = len([u for u in self.units if u.team == 'R' and u.is_alive])
-            blue_alive = len([u for u in self.units if u.team == 'B' and u.is_alive])
-            self.history['turns'].append(self.current_turn)
-            self.history['red_units'].append(red_alive)
-            self.history['blue_units'].append(blue_alive)
-
-        report_data = {
-            'scenario': self.scenario_name,
-            'turn': self.current_turn,
-            'ia1': info['ia1'],
-            'ia2': info['ia2'],
-            'winner': self.winner.name if self.winner else "Égalité",
-            'history': self.history,
-            'initial_red': self.history['red_units'][0] if self.history['red_units'] else 0,
-            'initial_blue': self.history['blue_units'][0] if self.history['blue_units'] else 0,
-            'final_red': self.history['red_units'][-1] if self.history['red_units'] else 0,
-            'final_blue': self.history['blue_units'][-1] if self.history['blue_units'] else 0,
-        }
-
-        generate_report('lanchester', report_data, filename)
-
-    def rapport_in_game(self):
-        """Génère un rapport HTML détaillé de l'état actuel du jeu."""
-        info = self.get_game_info()
-        filename = f"game_report_{info['turn']}.html"
-
-        teams_data = {}
-        teams = {'R': 'Rouge', 'B': 'Bleue'}
-        for team_code, team_name in teams.items():
-            team_units = [u for u in self.units if u.team == team_code]
-            alive_units = [u for u in team_units if u.is_alive]
-
-            total_hp = sum(u.current_hp for u in alive_units)
-            max_hp = sum(u.max_hp for u in alive_units)
-            hp_percent = (total_hp / max_hp * 100) if max_hp > 0 else 0
-
-            unit_types = {}
-            for u in alive_units:
-                if u.type not in unit_types:
-                    unit_types[u.type] = {'count': 0, 'hp': 0, 'max_hp': 0}
-                unit_types[u.type]['count'] += 1
-                unit_types[u.type]['hp'] += u.current_hp
-                unit_types[u.type]['max_hp'] += u.max_hp
-
-            types_stats = {}
-            for u_type, stats in unit_types.items():
-                avg_hp = stats['hp'] / stats['count']
-                type_hp_percent = (stats['hp'] / stats['max_hp'] * 100)
-                types_stats[u_type] = {
-                    'count': stats['count'],
-                    'avg_hp': avg_hp,
-                    'percent': type_hp_percent
-                }
-
-            teams_data[team_code] = {
-                'name': team_name,
-                'alive_count': len(alive_units),
-                'total_count': len(team_units),
-                'total_hp': total_hp,
-                'max_hp': max_hp,
-                'hp_percent': hp_percent,
-                'types': types_stats
-            }
-
-        units_list = []
-        for u in self.units:
-            units_list.append({
-                'team_code': u.team,
-                'type': u.type,
-                'hp': u.current_hp,
-                'max_hp': u.max_hp,
-                'hp_percent': (u.current_hp / u.max_hp * 100) if u.max_hp > 0 else 0,
-                'pos_x': u.position[0],
-                'pos_y': u.position[1],
-                'is_alive': u.is_alive
-            })
-
-        report_data = {
-            'turn': info['turn'],
-            'in_game_time': info['in_game_time'],
-            'ia1': info['ia1'],
-            'ia2': info['ia2'],
-            'performance': info['performance'],
-            'real_tps': info['real_tps'],
-            'teams': teams_data,
-            'units': units_list
-        }
-
-        generate_report('battle', report_data, filename)
-
-        if self.view_type == 1:  # Terminal view
-            print("Appuyez sur Entrée pour reprendre...")
-            input()
