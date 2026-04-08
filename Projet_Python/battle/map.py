@@ -391,10 +391,8 @@ class Map:
                     target_pos[1] + rng * random.choice([-1, 1])
                 )
             if type == 'C':
-                send(5,[shooter.position,target_pos,"C"])
                 return self.add_Arrow(shooter, target_pos, self.distance(shooter.position, target_pos))
             if type == 'S':
-                send(5,[shooter.position,target_pos,"S"])
                 return self.add_Lance(shooter, target_pos, self.distance(shooter.position, target_pos))
         bx, by = target.position
         fx, fy = shooter.position
