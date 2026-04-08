@@ -88,13 +88,13 @@ class BattleCLI:
         print(f"[CREATE] Scenario: {args.scenario}")
         print(f"      ia: {args.ia}")
         engine = Engine(args.scenario, args.ia, None)
-        engine.start()
+        engine.game_loop()
     
     def cmd_join(self, args):
         print(f"[JOIN] IP: {args.IP}")
         print(f"      ia: {args.ia}")
         engine = Engine(None, args.ia, args.IP)
-        engine.start()
+        engine.game_loop()
 
 
 if __name__ == "__main__":

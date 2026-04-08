@@ -72,8 +72,6 @@ class Engine:
         self.ia = AI_REGISTRY[self.ia1](self.team, self.game_map)
 
         self.ia.initialize()
-        
-        pass
     
 
     def game_loop(self):
@@ -84,8 +82,9 @@ class Engine:
         max_turn_time = self.turn_time_target
 
         next_view_time = time.time()
+        self.star_execution_time = time.time()
 
-        while self.is_running and self.current_turn < self.max_turns:
+        while True:
             turn_start = time.time()
             if not self.game_pause:
                 # FPS jamais au dessus de  TPS
@@ -113,14 +112,14 @@ class Engine:
 
                 self.process_turn()
                 #  Mettre à jour l'affichage
-                if turn_start >= next_view_time and self.view_type > 0:
+                if turn_start >= next_view_time:
                     next_view_time = turn_start + view_frame_time
                     self.update_view()
                 #  Passer au tour suivant
                 self.current_turn += 1
                 # Contrôle du turn rate
                 self.turn_time = time.time() - turn_start
-                if self.view and self.turn_time < max_turn_time:
+                if self.turn_time < max_turn_time:
                     time.sleep(max_turn_time - self.turn_time)
                 turn_time_plusp = time.time() - turn_start
                 if turn_time_plusp != 0:
@@ -179,21 +178,11 @@ class Engine:
     def update_view(self):
         """Met à jour l'affichage pour refléter l'état actuel"""
         a = self.view.display(self.game_map, self.get_game_info())
-        if self.view_type == 2:
 
-            if a['pause']:
-                self.game_pause = not self.game_pause
-            if a["quit"]:
-                self.end_battle()
-
-            if a["increase_speed"]:
-                self.tps += 10
-                print(self.tps)
-
-            if a["decrease_speed"]:
-                self.tps -= 10
-                print(self.tps)
-
+        if a['pause']:
+            self.game_pause = not self.game_pause
+        if a["quit"]:
+            self.end_battle()
 
 
     def get_game_info(self):

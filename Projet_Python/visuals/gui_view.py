@@ -434,8 +434,8 @@ class GUI_view:
         self.screen.blit(text, ((self.max_size[0] - text.get_size()[0])//2, 0))
         
         # Name IA
-        text = self.font.render(battle_infos['ia'], 1, "black")
-        self.screen.blit(text, (0, 0))
+        # text = self.font.render(battle_infos['ia'], 1, "black")
+        # self.screen.blit(text, (0, 0))
 
         # Tick rate (TPS)
         text = self.font.render(f"speed      : x{round(battle_infos['target_tps']/60,2)}", 1, "white")
