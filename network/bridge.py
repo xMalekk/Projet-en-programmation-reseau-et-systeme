@@ -1,91 +1,62 @@
 import socket
-import struct
-import json
 import os
 import sys
 
-# On remonte d'un dossier pour trouver Projet_Python
+# On garde ton système d'import pour events.py
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-# Maintenant on peut importer events
-from Projet_Python.battle.events import *
+from Projet_Python.battle.events import encode_event, decode_event
 
 class NetworkBridge:
-    def __init__(self, socket_path="/tmp/medievail_net.sock"):
-        self.socket_path = socket_path
-        self.client = None
+    def __init__(self, host="127.0.0.1", port=12345):
+        self.addr = (host, port)
+        self.sock = None
 
     def connect(self):
-        """Établit la connexion avec le démon C."""
-        if not os.path.exists(self.socket_path):
-            print(f"Erreur : La socket {self.socket_path} est introuvable.")
-            return False
-        
+        """
+        En UDP, on prépare juste la socket.
+        """
         try:
-            self.client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.client.connect(self.socket_path)
-            # Mode non-bloquant pour ne pas figer le rendu du jeu
-            self.client.setblocking(False)
-            print("Connecté au démon réseau avec succès.")
+            # socket.SOCK_DGRAM = UDP
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # On met un timeout de 0 pour que receive_event ne bloque pas le jeu
+            self.sock.setblocking(False)
+            print(f"Socket UDP prête pour {self.addr}")
             return True
         except Exception as e:
-            print(f"Échec de la connexion IPC : {e}")
+            print(f"Erreur socket UDP : {e}")
             return False
 
-    def send_event(self, event_type, payload):
+    def send_event(self, event_type, *args):
         """
-        Envoie un message au format :
-        [Header: 4 octets Type][Header: 4 octets Taille] + [Payload: JSON]
+        Envoie un message type "MOVE,1,10,20" en UDP.
         """
-        if not self.client:
+        if not self.sock:
             return
 
-        # On encode les données en JSON
-        json_payload = json.dumps(payload).encode('utf-8')
-        payload_size = len(json_payload)
-
-        # On prépare le header binaire (II = deux entiers 32 bits non signés)
-        # Conforme au uint32_t header[2] du code C
-        header = struct.pack("II", event_type, payload_size)
-
         try:
-            self.client.sendall(header + json_payload)
+            # On utilise ta nouvelle fonction encode avec les virgules
+            message = encode_event(event_type, *args)
+            self.sock.sendto(message, self.addr)
         except Exception as e:
-            print(f"Erreur d'envoi réseau : {e}")
+            print(f"Erreur d'envoi UDP : {e}")
 
     def receive_event(self):
-        
-        if not self.client:
+        """
+        Écoute si un paquet UDP est arrivé.
+        """
+        if not self.sock:
             return None
 
         try:
-            # ÉTAPE 1 : Lire le header (Type + Taille)
-            header_raw = self.client.recv(8)
-            if not header_raw:
-                return None
-
-            # On décode les deux entiers (I = 4 octets)
-            event_type, size = struct.unpack("II", header_raw)
-
-            # ÉTAPE 2 : Lire le JSON si la taille est > 0
-            if size > 0:
-                payload_raw = self.client.recv(size)
-                # On utilise ta fonction de events.py pour décoder
-                data = decode_event(payload_raw)
-                return event_type, data
-            
-            return event_type, {}
-
+            # On lit le paquet (1024 octets max, bien assez pour une ligne de texte)
+            data, _ = self.sock.recvfrom(1024)
+            # On utilise ta nouvelle fonction decode
+            return decode_event(data)
         except (BlockingIOError, socket.error):
-            # C'est ici que le côté "non-bloquant" agit :
-            # S'il n'y a rien sur la socket, on ne crash pas, on renvoie juste None
+            # Rien n'est arrivé, on continue la boucle du jeu
             return None
 
     def disconnect(self):
-        """Ferme proprement la connexion."""
-        if self.client:
-            # On prévient le démon qu'on part
-            self.send_event(SHUTDOWN, {"reason": "Python client exit"})
-            self.client.close()
-            self.client = None
-            print("Déconnecté du réseau.")
+        if self.sock:
+            self.sock.close()
+            print("Socket UDP fermée.")
