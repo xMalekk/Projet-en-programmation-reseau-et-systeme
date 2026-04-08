@@ -85,19 +85,15 @@ class BattleCLI:
 
     # === Command implementations  ===
     def cmd_create(self, args):
-
         print(f"[CREATE] Scenario: {args.scenario}")
         print(f"      ia: {args.ia}")
-        view_type = 2
-        engine = Engine(args.scenario, args.ia, view_type, None)
+        engine = Engine(args.scenario, args.ia, None)
         engine.start()
     
     def cmd_join(self, args):
-
         print(f"[JOIN] IP: {args.IP}")
         print(f"      ia: {args.ia}")
-        view_type = 2
-        engine = Engine(None, args.ia, view_type, args.IP)
+        engine = Engine(None, args.ia, args.IP)
         engine.start()
 
 
