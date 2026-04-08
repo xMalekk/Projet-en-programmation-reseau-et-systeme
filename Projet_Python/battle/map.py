@@ -39,14 +39,14 @@ class Map:
 
     def add_unit(self, x, y, type, id):
         """Permet d'ajouter une unité à la carte aux coordonnées (x, y)"""
-        unit = Unit().get_by_type(type, self.team, (x, y))
+        unit = Unit().get_by_type(id, type, self.team, (x, y))
         if unit.size <= x < self.p - unit.size and unit.size <= y < self.q - unit.size:
             for pos, other_unit in self.map.items():
                 if other_unit is not None:
                     dist = self.distance((x, y), pos)
                     if dist < self.marge * (unit.size + other_unit.size):
                         return  # Collision détecté, n'ajoute pas l'unité
-            self.map[(x, y)] = Unit().get_by_type(id, type, self.team, (x, y))
+            self.map[(x, y)] = unit
             
 
     #def get_unit(self, x, y):
@@ -65,7 +65,7 @@ class Map:
         self.p, self.q = newp, newq
         for i in range(len(scenario)):
             x, y, type = scenario[i]
-            id = str(self.team) + i
+            id = str(self.team) + str(i)
             self.add_unit(x, y, type, id)
 
 

@@ -19,10 +19,16 @@ def fix_string(string):
 
 class Engine:
     def __init__(self, scenario, ia, IP):
+        self.nbr_joueurs = 1
+        self.team = self.nbr_joueurs-1
         self.scenario_name = scenario
         self.ia = fix_string(ia)
         self.IP = IP
-        self.game_map = None
+        if self.scenario_name:
+            self.game_map = Map(self.team)
+            Map.load(self.game_map, self.scenario_name)
+        else:
+            self.game_map = None
         self.units = []
         self.projectiles = []
         self.game_pause = False
@@ -52,8 +58,7 @@ class Engine:
         self.time_turn = 0
         self.units = []
 
-        self.nbr_joueurs = 1
-        pass
+       
     def initialize_game(self):
 
         """donner IP pour celui qui rejoint, initialiser partie"""
@@ -64,7 +69,7 @@ class Engine:
         if self.ia not in AI_REGISTRY:
             raise ValueError(f"IA '{self.ia}' non reconnue.")
 
-        self.ia = AI_REGISTRY[self.ia1](self.nbr_joueurs - 1, self.game_map)
+        self.ia = AI_REGISTRY[self.ia1](self.team, self.game_map)
 
         self.ia.initialize()
         
