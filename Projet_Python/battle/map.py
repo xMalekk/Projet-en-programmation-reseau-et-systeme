@@ -46,6 +46,7 @@ class Map:
                     if dist < self.marge * (unit.size + other_unit.size):
                         return  # Collision détecté, n'ajoute pas l'unité
             self.map[(x, y)] = Unit().get_by_type(type, team, (x, y))
+            send("UNIT_SPAWN",[team, type, (x,y)])
 
     #def get_unit(self, x, y):
     #    """Permet de récupérer l'unité à la position (x, y)"""
@@ -239,6 +240,7 @@ class Map:
             next_y = unit_position_y + y_step
             next_pos = (next_x, next_y)
             self.maj_unit_posi(unit, next_pos)
+            send("UNIT_MOVE",[(unit_position_x,unit_position_y),next_pos])
 
             unit.direction = (dir_x, dir_y)  # mettre a jour la direction
             if depth == 0:
@@ -371,7 +373,7 @@ class Map:
 
         unit.time_reset()
         target.take_damage(unit)
-
+        send("UNIT_ATTACK",[target,unit])
         # set cooldown
 
         return
@@ -389,8 +391,10 @@ class Map:
                     target_pos[1] + rng * random.choice([-1, 1])
                 )
             if type == 'C':
+                send("PROJECTILE_SPAWN",[shooter.position,target_pos,"C"])
                 return self.add_Arrow(shooter, target_pos, self.distance(shooter.position, target_pos))
             if type == 'S':
+                send("PROJECTILE_SPAWN",[shooter.position,target_pos,"S"])
                 return self.add_Lance(shooter, target_pos, self.distance(shooter.position, target_pos))
         bx, by = target.position
         fx, fy = shooter.position
