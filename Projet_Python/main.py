@@ -7,43 +7,22 @@ import sys
 import os
 
 from battle.engine import Engine
-from tournaments.tournament_manager import TournamentManager
 from battle.scenario import Scenario
 from ia.registry import AI_REGISTRY
 global tps
 
 if not os.path.exists("data/scenario"):
     os.mkdir("data/scenario")
-if not os.path.exists("data/lanchester"):
-    os.mkdir("data/lanchester")
-if not os.path.exists("data/save"):
-    os.mkdir("data/save")
-if not os.path.exists("data/savedata"):
-    os.mkdir("data/savedata")
 
 def help():
     print("Utilisation : battle <commande> [options]")
     print("battle run <scenario> <ia1> <ia2> / Lancer une bataille entre deux IA")
-    print("battle load <save> / Charger une bataille ou un tournoi sauvegardé")
-    print("battle tournament / Lancer un tournoi automatique")
     print("")
     
     print("Liste des scénarios disponibles :")
-    scenarios, scenarios_lanchester, save, save_data = Scenario().list_scenarios()
+    scenarios = Scenario().list_scenarios()
     print(" Scénarios :")
     for s in scenarios:
-        print(f"  - {s}")
-    print("")
-    print(" Scénarios Lanchester :")
-    for s in scenarios_lanchester:
-        print(f"  - {s}")
-    print("")
-    print(" Sauvegardes :")
-    for s in save:
-        print(f"  - {s}")
-    print("")
-    print(" Données sauvegardées :")
-    for s in save_data:
         print(f"  - {s}")
     print("")
     
@@ -74,28 +53,6 @@ class BattleCLI:
         run_parser.add_argument("--no-terminal", action="store_true", help="Launch no view")
 
         run_parser.add_argument("-d", "--datafile", help="Write data output to this file (optional)")
-
-        # === battle plot <ia1> <ia2> <scenario_name> <units> <range> ===
-        plot_parser = subparsers.add_parser("plot", help="Verify Lanchester laws with multiple simulations.")
-        plot_parser.add_argument("scenario", help="Scenario base name")
-        plot_parser.add_argument("units", help="Units to use, e.g., '[Knight,Crossbow]'")
-        plot_parser.add_argument("range", help="Range of units, e.g., 'range(1,100,5)'")
-        plot_parser.add_argument("--out", default="lanchester_plot_report.html", help="Output report file")
-
-        t = subparsers.add_parser("tournament", help="Lance un tournoi automatique")
-        t.add_argument("--generals", nargs="+", default=["all"])
-        t.add_argument("--scenarios", nargs="+", default=["all"])
-        t.add_argument("--matches", type=int)
-        t.add_argument("--out", default="tournament_report.html")
-        t.add_argument("--scenario-dir", default="data/scenario")
-
-        # === battle load <savefile> ===
-        load_parser = subparsers.add_parser("load", help="Load a previously saved battle or tournament.")
-        load_parser.add_argument("savefile", help="Path to saved battle file")
-        load_parser.add_argument("-t", action="store_true", help="Launch terminal view instead of 2.5D")
-        load_parser.add_argument("--no-terminal", action="store_true", help="Launch no view")
-
-        load_parser.add_argument("-d", "--datafile", help="Write data output to this file (optional)")
 
         self.parser = parser
 
@@ -172,33 +129,6 @@ class BattleCLI:
         engine = Engine(name, ia1, ia2, view_type)
         engine.start()
 
-    def cmd_tournament(self, args):
-        kwargs = {
-            "out_file": args.out,
-            "scenario_dir": args.scenario_dir,
-        }
-
-        if args.generals != ["all"]:
-            kwargs["generals"] = args.generals
-
-        if args.scenarios != ["all"]:
-            kwargs["scenarios"] = args.scenarios
-
-        if args.matches is not None:
-            kwargs["matches_per_pair"] = args.matches
-
-        TournamentManager(**kwargs)
-
-    def cmd_plot(self, args):
-        from tournaments.lanchester_manager import LanchesterPlotManager
-        LanchesterPlotManager(
-            ia1=args.ia1,
-            ia2=args.ia2,
-            scenario_base=args.scenario,
-            units_str=args.units,
-            range_str=args.range,
-            out_file=args.out
-        )
 
 
 if __name__ == "__main__":

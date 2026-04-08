@@ -30,18 +30,8 @@ class Scenario:
 
     def get_list_by_name(self, name = "stest1"):
         """ Renvoie une liste dont chaque element est : [x, y, type_unite]"""
-        if "lanchester" in name:
-            with open(f"data/lanchester/{name}.txt", "r") as f:
-                data = f.read().split("\n")
-        elif "save" in name:
-            with open(f"data/save/{name}.txt", "r") as f:
-                data = f.read().split("\n")
-        elif "data" in name:
-            with open(f"data/savedata/{name}.txt", "r") as f:
-                data = f.read().split("\n")
-        else:
-            with open(f"data/scenario/{name}.txt", "r") as f:
-                data = f.read().split("\n")
+        with open(f"data/scenario/{name}.txt", "r") as f:
+            data = f.read().split("\n")
         
         
         line = data[0].split(',')
@@ -70,30 +60,14 @@ class Scenario:
     
     def delete_scenario(self, scenario_name):
         """ Supprime un scénario donné """
-        if "lanchester" in scenario_name:
-            if os.path.exists("data/lanchester/{scenario_name}.txt"):
-                os.remove(f"data/lanchester/{scenario_name}.txt")
-        elif "save" in scenario_name:
-            if os.path.exists("data/save/{scenario_name}.txt"):
-                os.remove(f"data/save/{scenario_name}.txt")
-        elif "data" in scenario_name:
-            if os.path.exists("data/savedata/{scenario_name}.txt"):
-                os.remove(f"data/savedata/{scenario_name}.txt")
-        else:
-            if os.path.exists("data/scenario/{scenario_name}.txt"):
-                os.remove(f"data/scenario/{scenario_name}.txt")
+        if os.path.exists("data/scenario/{scenario_name}.txt"):
+            os.remove(f"data/scenario/{scenario_name}.txt")
 
     def list_scenarios(self):
         """ Renvoie la liste des scénarios disponibles """
         files = os.listdir("data/scenario")
         scenarios = [f[:-4] for f in files if f.endswith(".txt")]
-        files = os.listdir("data/lanchester")
-        scenarios_lanchester = [f[:-4] for f in files if f.endswith(".txt")]
-        files = os.listdir("data/save")
-        save = [f[:-4] for f in files if f.endswith(".txt")]
-        files = os.listdir("data/savedata")
-        save_data = [f[:-4] for f in files if f.endswith(".txt")]
-        return (scenarios, scenarios_lanchester, save, save_data)
+        return (scenarios)
 
     def create_lanchester_scenario_N(self, scenario_name, size, unit_red_type, unit_blue_type, n_red, n_blue):
         """ Génère un scénario de type Lanchester avec deux types d'unités potentiellement différents """
