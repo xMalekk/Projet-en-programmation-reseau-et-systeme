@@ -1,10 +1,6 @@
 from battle.map import Map
 import time
-import sys, os
-
-if os.name != 'nt':
-    import termios
-    import tty
+import visuals.gui_view as gui
 from collections import deque
 from random import randint
 from numpy import mean
@@ -22,10 +18,10 @@ def fix_string(string):
         return str_void
 
 class Engine:
-    def __init__(self, scenario, ia, view_type):
+    def __init__(self, scenario, ia, IP):
         self.scenario_name = scenario
         self.ia = fix_string(ia)
-
+        self.IP = IP
         self.game_map = None
         self.units = []
         self.projectiles = []
@@ -33,8 +29,7 @@ class Engine:
         self.current_turn = 0
         self.is_running = False
         self.winner = None
-        self.view = None
-        self.pressed_keys = set()
+        self.view = gui.GUI_view(self.game_map.p, self.game_map.q)
         self.real_tps = 0
         # Historique des t/s des dernières turns (max 10)
         self.tab_game_tps = deque(maxlen=10)
@@ -57,7 +52,10 @@ class Engine:
         self.time_turn = 0
         self.units = []
         pass
-     
+    def initialize_game(self):
+        """donner IP pour celui qui rejoint, initialiser partie"""
+      
+
     def game_loop(self):
         """Boucle principale du jeu"""
 
@@ -73,13 +71,13 @@ class Engine:
                 # FPS jamais au dessus de  TPS
                 # FPS jamais au dessus de  max_fps
                 # FPS jamais en dessous de min_fps, sauf si TPS < min_fps
-                if self.view_type > 1 and self.current_turn % 5 == 0:
+                if self.current_turn+1 % 5 == 0:
 
                     if self.real_tps == 0: tps =60 
                     else: tps = self.real_tps
                     if self.tps <= 0: 
                         self.tps =0
-                        perf =1
+                        perf = 1
                     else: perf = tps / (self.tps)  # stabilise autour de tps cible
 
                     view_frame_time= max(min(( view_frame_time / perf), self.max_frame_delay), self.min_frame_delay)
@@ -94,17 +92,13 @@ class Engine:
                     ##################################################################
 
                 self.process_turn()
-                # 1. Gérer les entrées
-                self.handle_input()
-                # 2. Mettre à jour l'affichage
+                #  Mettre à jour l'affichage
                 if turn_start >= next_view_time and self.view_type > 0:
                     next_view_time = turn_start + view_frame_time
                     self.update_view()
-                # 3. Vérifier les conditions de victoire
-                self.check_victory()
-                # 4. Passer au tour suivant
+                #  Passer au tour suivant
                 self.current_turn += 1
-                # 5. Contrôle du turn rate
+                # Contrôle du turn rate
                 self.turn_time = time.time() - turn_start
                 if self.view and self.turn_time < max_turn_time:
                     time.sleep(max_turn_time - self.turn_time)
@@ -161,3 +155,38 @@ class Engine:
             self.winner = None
             self.is_running = False
         pass
+
+    def update_view(self):
+        """Met à jour l'affichage pour refléter l'état actuel"""
+        a = self.view.display(self.game_map, self.get_game_info())
+        if self.view_type == 2:
+
+            if a['pause']:
+                self.game_pause = not self.game_pause
+            if a["quit"]:
+                self.end_battle()
+
+            if a["increase_speed"]:
+                self.tps += 10
+                print(self.tps)
+
+            if a["decrease_speed"]:
+                self.tps -= 10
+                print(self.tps)
+
+
+
+    def get_game_info(self):
+        """Retourne les informations de jeu à afficher"""
+
+        return {
+            'turn': self.current_turn,
+            'game_pause': self.game_pause,
+            'target_tps' : self.tps,
+            'real_tps': mean(self.tab_tps_affichage),
+            'turn_fps': round(self.turn_fps),
+            'time_from_start': f'{(time.time() - self.star_execution_time):.2f}s',
+            'in_game_time': f'{(self.current_turn / 60):.2f}s',
+            'performance': f'{round(self.real_tps*100 / 60)}%',
+            'time_delta': f'{((self.current_turn / 60)-(time.time() - self.star_execution_time)):.2f}s',
+        }
