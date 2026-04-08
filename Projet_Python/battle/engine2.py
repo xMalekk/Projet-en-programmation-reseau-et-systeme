@@ -41,13 +41,6 @@ class Engine:
         self.tab_tps_affichage = deque(maxlen=120)
 
         self.star_execution_time = None
-        # Nouvelles stats tournois
-        self.ia_thinking_time = {'R': 0.0, 'B': 0.0}
-        self.initial_units_count = {'R': 0, 'B': 0}
-        self.history = {'turns': [], 'red_units': [], 'blue_units': []}
-
-        # Vue
-        self.view_type = view_type
         # frame rate controles
         self.max_fps = 60  # <-- FPS MAX pas besoin de plus ca fait trop de fluctuation sinon
         self.min_fps = 10  # <-- FPS MIN
@@ -77,10 +70,6 @@ class Engine:
         while self.is_running and self.current_turn < self.max_turns:
             turn_start = time.time()
             if not self.game_pause:
-                ######################################################
-                #####             - FPS throttling -          ########
-                #####      " C'est moche mais ca marche "     ########
-                ######################################################
                 # FPS jamais au dessus de  TPS
                 # FPS jamais au dessus de  max_fps
                 # FPS jamais en dessous de min_fps, sauf si TPS < min_fps
@@ -92,15 +81,11 @@ class Engine:
                         self.tps =0
                         perf =1
                     else: perf = tps / (self.tps)  # stabilise autour de tps cible
-                    
-                    #self.turn_time_target = 1.0 / max(self.tps,1)
-                    #print(perf)
 
                     view_frame_time= max(min(( view_frame_time / perf), self.max_frame_delay), self.min_frame_delay)
 
                     self.turn_time_target = max(min(( self.turn_time_target * perf), 1/(self.tps+3)), 1/(self.tps+30))
-                    
-                    
+                     
                     view_frame_time =max( 1/tps , view_frame_time)   #fps jamais > tps
                     self.turn_fps = 1 / view_frame_time
                     max_turn_time = self.turn_time_target 
@@ -119,9 +104,6 @@ class Engine:
                 self.check_victory()
                 # 4. Passer au tour suivant
                 self.current_turn += 1
-                # 5 mets a jour les unités
-                self.update_units(1 / 60)
-                self.update_projectiles()
                 # 5. Contrôle du turn rate
                 self.turn_time = time.time() - turn_start
                 if self.view and self.turn_time < max_turn_time:
@@ -136,6 +118,9 @@ class Engine:
 #######################WORK IN PROGRESS##########################################
     def process_turn(self):
         """Traite un tour de jeu (déplacements, combats, etc.)"""
+        # recevoir les info de mouvements et attaques du distant, et autres
+        self.update_units(1 / 60)
+        self.update_projectiles()
         for unit in self.units:
             if not unit.is_alive:
                 continue
@@ -175,40 +160,4 @@ class Engine:
         if self.current_turn > self.max_turns:
             self.winner = None
             self.is_running = False
-        pass
-
-    def handle_input(self):
-        key_input = get_key()
-        if key_input is None:
-            self.pressed_keys.clear()
-            return
-
-        # on mes les flèches vers ZQSD pour simplifier
-        if key_input.startswith('\x1b'):
-            mapping = {'\x1b[A': 'z', '\x1b[B': 's', '\x1b[D': 'q', '\x1b[C': 'd'}
-            if key_input in mapping:
-                key_input = mapping[key_input]
-            else:
-                return
-
-        for char in key_input:
-            key = char.lower()
-            if key == '\t': key = 'tab'
-
-            if key in self.pressed_keys:
-                continue
-            self.pressed_keys.add(key)
-
-            if key == 'z':
-                self.view.move(0, -1)
-            elif key == 's':
-                self.view.move(0, 1)
-            elif key == 'q':
-                self.view.move(-10, 0)
-            elif key == 'd':
-                self.view.move(10, 0)
-            elif key == 'p':
-                self.game_pause = not self.game_pause
-            elif key == 'c':
-                self.change_view(2)
         pass
