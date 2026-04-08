@@ -1,14 +1,10 @@
-﻿// Abstractions IPC partagées entre le démon et ses backends.
+﻿// Abstractions IPC partagées entre le daemon et ses backends.
 // Fournit les types et signatures utilisés par unix_socket.c et futurs backends.
 
 #pragma once
 
 #include <stddef.h>
 #include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef enum IPCMessageType {
     IPC_MESSAGE_NONE = 0,
@@ -31,7 +27,3 @@ int ipc_connection_poll(IPCConnection *connection, IPCMessage *out_message, unsi
 int ipc_connection_send(IPCConnection *connection, const IPCMessage *message);
 void ipc_message_free(IPCMessage *message);
 void ipc_sleep(unsigned int milliseconds);
-
-#ifdef __cplusplus
-}
-#endif
