@@ -2,8 +2,12 @@ import socket
 import struct
 import json
 import os
-# On importe les constantes numériques (UNIT_MOVE, SHUTDOWN, etc.)
-from .events import *
+import sys
+# On remonte d'un dossier pour trouver Projet_Python
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Maintenant on peut importer events
+from Projet_Python.battle.events import *
 
 class NetworkBridge:
     def __init__(self, socket_path="/tmp/medievail_net.sock"):
