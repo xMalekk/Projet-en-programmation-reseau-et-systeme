@@ -46,7 +46,7 @@ class Map:
                     if dist < self.marge * (unit.size + other_unit.size):
                         return  # Collision détecté, n'ajoute pas l'unité
             self.map[(x, y)] = Unit().get_by_type(type, team, (x, y))
-            send(1,[team, type, (x,y)])
+            send_event_event(1,[team, type, (x,y)])
 
     #def get_unit(self, x, y):
     #    """Permet de récupérer l'unité à la position (x, y)"""
@@ -240,7 +240,7 @@ class Map:
             next_y = unit_position_y + y_step
             next_pos = (next_x, next_y)
             self.maj_unit_posi(unit, next_pos)
-            send(2,[(unit_position_x,unit_position_y),next_pos])
+            send_event_event(2,[(unit_position_x,unit_position_y),next_pos])
 
             unit.direction = (dir_x, dir_y)  # mettre a jour la direction
             if depth == 0:
@@ -373,7 +373,7 @@ class Map:
 
         unit.time_reset()
         target.take_damage(unit)
-        send(4,[target,unit])
+        send_event_event(4,[target,unit])
         # set cooldown
 
         return
