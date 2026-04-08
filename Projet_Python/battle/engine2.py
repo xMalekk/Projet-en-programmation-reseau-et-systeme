@@ -51,10 +51,25 @@ class Engine:
         self.turn_fps = 0
         self.time_turn = 0
         self.units = []
+
+        self.nbr_joueurs = 1
         pass
     def initialize_game(self):
+
         """donner IP pour celui qui rejoint, initialiser partie"""
-      
+        #self.bridge.connect()
+    
+    def initialize_ai(self):
+        """Initialise les deux IA"""
+        if self.ia not in AI_REGISTRY:
+            raise ValueError(f"IA '{self.ia}' non reconnue.")
+
+        self.ia = AI_REGISTRY[self.ia1](self.nbr_joueurs - 1, self.game_map)
+
+        self.ia.initialize()
+        
+        pass
+    
 
     def game_loop(self):
         """Boucle principale du jeu"""
