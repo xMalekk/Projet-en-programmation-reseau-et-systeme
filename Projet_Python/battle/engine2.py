@@ -24,7 +24,7 @@ def fix_string(string):
 class Engine:
     def __init__(self, scenario, ia, view_type):
         self.scenario_name = scenario
-        self.ia1 = fix_string(ia)
+        self.ia = fix_string(ia)
 
         self.game_map = None
         self.units = []
@@ -132,3 +132,83 @@ class Engine:
                     self.tab_tps_affichage.append(1.0 / turn_time_plusp)
                 self.real_tps = (sum(self.tab_game_tps) / len(self.tab_game_tps)) if self.tab_game_tps else 0
                 self.time_turn = time.time()
+
+#######################WORK IN PROGRESS##########################################
+    def process_turn(self):
+        """Traite un tour de jeu (déplacements, combats, etc.)"""
+        for unit in self.units:
+            if not unit.is_alive:
+                continue
+            if unit.team == self.ia.team:
+                self.ia.play_turn(unit, self.current_turn)
+            else :
+                # /!\ ici on devrait recevoir les info reseau du joueur distant /!\
+                
+                pass
+##########################################################################
+
+    def update_units(self,time_per_tick):
+        for unit in self.units:
+            unit.update(time_per_tick)
+
+    def update_projectiles(self):
+            self.game_map.update_projectiles()
+
+    def check_victory(self):
+        """Vérifie les conditions de victoire"""
+        #  Toutes les unités d'un camp détruites
+
+        units_team1 = len([u for u in self.units if u.team == 'R' and u.is_alive])
+        units_team2 = len([u for u in self.units if u.team == 'B' and u.is_alive])
+
+        # selection du winner gagne si tout les adverse sont mort
+        if units_team1 == 0 and units_team2 == 0:
+            self.winner = None
+            self.is_running = False
+        elif units_team1 == 0:
+            self.winner = self.ia2
+            self.is_running = False
+        elif units_team2 == 0:
+            self.winner = self.ia1
+            self.is_running = False
+
+        if self.current_turn > self.max_turns:
+            self.winner = None
+            self.is_running = False
+        pass
+
+    def handle_input(self):
+        key_input = get_key()
+        if key_input is None:
+            self.pressed_keys.clear()
+            return
+
+        # on mes les flèches vers ZQSD pour simplifier
+        if key_input.startswith('\x1b'):
+            mapping = {'\x1b[A': 'z', '\x1b[B': 's', '\x1b[D': 'q', '\x1b[C': 'd'}
+            if key_input in mapping:
+                key_input = mapping[key_input]
+            else:
+                return
+
+        for char in key_input:
+            key = char.lower()
+            if key == '\t': key = 'tab'
+
+            if key in self.pressed_keys:
+                continue
+            self.pressed_keys.add(key)
+
+            if key == 'z':
+                self.view.move(0, -1)
+            elif key == 's':
+                self.view.move(0, 1)
+            elif key == 'q':
+                self.view.move(-10, 0)
+            elif key == 'd':
+                self.view.move(10, 0)
+            elif key == 'p':
+                self.game_pause = not self.game_pause
+            elif key == 'c':
+                self.change_view(2)
+        pass
