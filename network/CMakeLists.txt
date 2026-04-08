@@ -10,7 +10,7 @@ option(MEDIEVAIL_ENABLE_WARNINGS "Enable compiler warnings" ON)
 set(MEDIEVAIL_NET_CORE_SOURCES
     src/core/app.c
     src/core/log.c
-    src/ipc/unix_socket.c
+    src/ipc/udp_local.c
 )
 
 add_library(medievail_net_core )
