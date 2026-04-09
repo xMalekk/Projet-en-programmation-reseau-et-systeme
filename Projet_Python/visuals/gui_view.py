@@ -13,18 +13,13 @@ zqsd -> deplacement
 SHIFT -> deplacement rapide
 m -> dezoom global
 p -> Pause
-f9 -> changement de type de vue
 h -> affichage hitbox
 t -> affichage target
 r -> affichage range
 x -> affichage sprites
 l -> affichage ligne de vue
-c -> quicksave
-v -> quickload
 Molette pour le zoom
-fleche haut ou bas -> accelerer ou ralentir la vitesse de jeu
 f3 -> affichage d'infos supplémentaires
-tab -> Genere un rapport de bataille
 """
 
 pygame.init()
@@ -124,12 +119,6 @@ class GUI_view:
         options_return = {
             "quit" : False,
             "pause" : False,
-            "change_view" : False,
-            "quicksave" : False,
-            "quickload" : False,
-            "increase_speed" : False,
-            "decrease_speed" : False,
-            "generate_rapport" : False
         }
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -166,11 +155,6 @@ class GUI_view:
                     """ PAUSE """
                     options_return["pause"] = True
 
-                elif event.key == pygame.K_F9:
-                    """ CHANGE TO TERMINAL VIEW """
-                    options_return["change_view"] = True
-                    pygame.quit()
-
                 elif event.key == pygame.K_l:
                     """ DISPLAY LOS """
                     self.display_LOS = not self.display_LOS
@@ -190,26 +174,6 @@ class GUI_view:
                 elif event.key == pygame.K_x:
                     """ DISPLAY SPRITES """
                     self.display_sprites = not self.display_sprites
-
-                elif event.key == pygame.K_c:
-                    """ QUICKSAVE """
-                    options_return["quicksave"] = True
-                    
-                elif event.key == pygame.K_v:
-                    """ QUICKLOAD """
-                    options_return["quickload"] = True
-
-                elif event.key == pygame.K_UP:
-                    """ INCREASE SPEED """
-                    options_return["increase_speed"] = True
-
-                elif event.key == pygame.K_DOWN:
-                    """ DECREASE SPEED """
-                    options_return["decrease_speed"] = True
-                
-                elif event.key == pygame.K_TAB:
-                    """ GENERATE RAPPORT """
-                    options_return["generate_rapport"] = True
                 
                 elif event.key == pygame.K_F3:
                     """ DISPLAY MORE INFOS """
@@ -298,7 +262,11 @@ class GUI_view:
                     unit.get_hit -= 1/fps
                     color_display = ""
                 else:
-                    color_display = unit.team
+                    match unit.team:
+                        case 0:
+                            color_display = "R"
+                        case 1:
+                            color_display = "B"
 
                 # On charge le sprite si il n'existe pas encore
                 try:
@@ -320,7 +288,11 @@ class GUI_view:
                 iso_pos = (centre_position[0]-centre_position[1], (centre_position[0]+centre_position[1])/2)
                 (proj_x, proj_y) = ((iso_pos[0]+self.size_map[0]//2-self.offset[0])*self.tile_w, (iso_pos[1]+self.size_map[1]//2-self.offset[1])*self.tile_h)
                 
-                color_bar = 'red' if unit.team == 'R' else 'blue'
+                match unit.team:
+                        case 0:
+                            color_bar = "red"
+                        case 1:
+                            color_bar = "blue"
 
                 # display hitbox
                 if self.display_hitbox:
@@ -431,10 +403,11 @@ class GUI_view:
         for (x, y) in map.map:
             unit = map.get_unit(x, y)
             if unit.is_alive: 
-                if unit.team == 'R':
-                    color = 'red'
-                else:
-                    color = 'blue'
+                match unit.team:
+                    case 0:
+                        color = "red"
+                    case 1:
+                        color = "blue"
 
                 adjust_pos = (x*self.size_mini_map[0]/self.size_map[0], y*self.size_mini_map[1]/self.size_map[1])
                 centre_position = (adjust_pos[0]-self.size_map[0]//2, adjust_pos[1]-self.size_map[1]//2)
@@ -460,12 +433,9 @@ class GUI_view:
             text = self.font.render(f"{time}s", 1, "white")
         self.screen.blit(text, ((self.max_size[0] - text.get_size()[0])//2, 0))
         
-        # Name IA 1
-        text = self.font.render(battle_infos['ia1'], 1, "red")
-        self.screen.blit(text, (0, 0))
-        # Name IA 2
-        text = self.font.render(battle_infos['ia2'], 1, "blue")
-        self.screen.blit(text, (self.max_size[0]-text.get_size()[0], 0))
+        # Name IA
+        # text = self.font.render(battle_infos['ia'], 1, "black")
+        # self.screen.blit(text, (0, 0))
 
         # Tick rate (TPS)
         text = self.font.render(f"speed      : x{round(battle_infos['target_tps']/60,2)}", 1, "white")
@@ -473,36 +443,6 @@ class GUI_view:
 
         # Informations supplémentaires
         if self.display_more_infos:
-            # Nb units IA 1
-            text = self.font.render(f"Total units : {battle_infos['units_ia1']}", 1, "red")
-            self.screen.blit(text, (0, 30))
-            # Nb units par type IA1
-            text = self.font.render(f"Pikemen : {len([u for u in self.all_units if u.team == 'R' and u.is_alive and u.type == 'P'])}", 1, "red")
-            self.screen.blit(text, (0, 75))
-            text = self.font.render(f"Knights : {len([u for u in self.all_units if u.team == 'R' and u.is_alive and u.type == 'K'])}", 1, "red")
-            self.screen.blit(text, (0, 100))
-            text = self.font.render(f"Crossbowmen : {len([u for u in self.all_units if u.team == 'R' and u.is_alive and u.type == 'C'])}", 1, "red")
-            self.screen.blit(text, (0, 125))
-            text = self.font.render(f"Long Swordsmen : {len([u for u in self.all_units if u.team == 'R' and u.is_alive and u.type == 'L'])}", 1, "red")
-            self.screen.blit(text, (0, 150))
-            text = self.font.render(f"Elite Skirmishers : {len([u for u in self.all_units if u.team == 'R' and u.is_alive and u.type == 'S'])}", 1, "red")
-            self.screen.blit(text, (0, 175))
-            
-            # Nb units IA 2
-            text = self.font.render(f"Total units : {battle_infos['units_ia2']}", 1, "blue")
-            self.screen.blit(text, (self.max_size[0]-text.get_size()[0], 30))
-            # Nb units par type IA1
-            text = self.font.render(f"Pikemen : {len([u for u in self.all_units if u.team == 'B' and u.is_alive and u.type == 'P'])}", 1, "blue")
-            self.screen.blit(text, (self.max_size[0]-text.get_size()[0], 75))
-            text = self.font.render(f"Knights : {len([u for u in self.all_units if u.team == 'B' and u.is_alive and u.type == 'K'])}", 1, "blue")
-            self.screen.blit(text, (self.max_size[0]-text.get_size()[0], 100))
-            text = self.font.render(f"Crossbowmen : {len([u for u in self.all_units if u.team == 'B' and u.is_alive and u.type == 'C'])}", 1, "blue")
-            self.screen.blit(text, (self.max_size[0]-text.get_size()[0], 125))
-            text = self.font.render(f"Long Swordsmen : {len([u for u in self.all_units if u.team == 'B' and u.is_alive and u.type == 'L'])}", 1, "blue")
-            self.screen.blit(text, (self.max_size[0]-text.get_size()[0], 150))
-            text = self.font.render(f"Elite Skirmishers : {len([u for u in self.all_units if u.team == 'B' and u.is_alive and u.type == 'S'])}", 1, "blue")
-            self.screen.blit(text, (self.max_size[0]-text.get_size()[0], 175))
-
             # FPS
             text = self.font.render(f"fps     : {battle_infos['turn_fps']}", 1, "white")
             self.screen.blit(text, (0, self.max_size[1]-text.get_size()[1]*4))
