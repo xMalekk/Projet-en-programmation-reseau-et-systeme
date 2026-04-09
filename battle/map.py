@@ -41,17 +41,16 @@ class Map:
     def add_unit(self, x, y, type, id, team):
         """Permet d'ajouter une unité à la carte aux coordonnées (x, y)"""
         unit = Unit().get_by_type(id, type, team, (x, y))
-        if unit.size <= x < self.p - unit.size and unit.size <= y < self.q - unit.size:
-            for pos, other_unit in self.map.items():
-                if other_unit is not None:
-                    dist = self.distance((x, y), pos)
-                    if dist < self.marge * (unit.size + other_unit.size):
-                        return  # Collision détecté, n'ajoute pas l'unité
-            self.map[(x, y)] = unit
-            # Envoi message Unit_Spawn
-            if unit.team == self.team:
-                self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, x, y)
-            
+        # if unit.size <= x < self.p - unit.size and unit.size <= y < self.q - unit.size:
+        #     for pos, other_unit in self.map.items():
+        #         if other_unit is not None:
+        #             dist = self.distance((x, y), pos)
+        #             if dist < self.marge * (unit.size + other_unit.size):
+        #                 return  # Collision détecté, n'ajoute pas l'unité
+        self.map[(x, y)] = unit
+        # Envoi message Unit_Spawn
+        if unit.team == self.team:
+            self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, x, y)
 
     #def get_unit(self, x, y):
     #    """Permet de récupérer l'unité à la position (x, y)"""
@@ -61,6 +60,9 @@ class Map:
         """Permet de retirer l'unité à la position (x, y)"""
         if (x, y) in self.map:
             self.map.pop((x, y), None)
+    
+    def get_unit_by_id(self, unit_id):
+        return [self.map[pos] for pos in self.map if self.map[pos].id == unit_id][0]
 
     def load(self, scenario_name):
         """"Charge une carte depuis un scénario donné ou un fichier de sauvegarde"""
