@@ -109,9 +109,6 @@ class Engine:
                     self.turn_fps = 1 / view_frame_time
                     max_turn_time = self.turn_time_target 
 
-                    #print(1/max_turn_time)
-                    ##################################################################
-
                 self.process_turn()
                 #  Mettre à jour l'affichage
                 if turn_start >= next_view_time:
@@ -170,25 +167,23 @@ class Engine:
     def check_victory(self):
         """Vérifie les conditions de victoire"""
         #  Toutes les unités d'un camp détruites
+        if self.nbr_joueurs > 1:
+            nbr_units = []
+            total = 0
+            for i in self.nbr_joueurs:
+                nbr_units[i] = len([u for u in self.units if u.team == i and u.is_alive])
+                total += nbr_units[i]
+                if total == 0:  # no one won
+                    self.winner = None
+                    self.is_running = False
+                elif nbr_units[i] == total: # selection du winner gagne si tout les adverse sont mort
+                    self.winner = i
+                    self.is_running = False
 
-        units_team1 = len([u for u in self.units if u.team == 'R' and u.is_alive])
-        units_team2 = len([u for u in self.units if u.team == 'B' and u.is_alive])
-
-        # selection du winner gagne si tout les adverse sont mort
-        if units_team1 == 0 and units_team2 == 0:
-            self.winner = None
-            self.is_running = False
-        elif units_team1 == 0:
-            self.winner = self.ia2
-            self.is_running = False
-        elif units_team2 == 0:
-            self.winner = self.ia1
-            self.is_running = False
-
-        if self.current_turn > self.max_turns:
-            self.winner = None
-            self.is_running = False
-        pass
+            if self.current_turn > self.max_turns:
+                self.winner = None
+                self.is_running = False
+            pass
 
     def update_view(self):
         """Met à jour l'affichage pour refléter l'état actuel"""
