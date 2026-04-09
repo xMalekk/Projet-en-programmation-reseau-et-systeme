@@ -170,7 +170,7 @@ class Engine:
         if self.nbr_joueurs > 1:
             nbr_units = []
             total = 0
-            for i in self.nbr_joueurs:
+            for i in range(self.nbr_joueurs):
                 nbr_units[i] = len([u for u in self.units if u.team == i and u.is_alive])
                 total += nbr_units[i]
                 if total == 0:  # no one won
