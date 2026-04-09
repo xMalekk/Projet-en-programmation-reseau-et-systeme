@@ -4,6 +4,7 @@ import visuals.gui_view as gui
 from collections import deque
 from random import randint
 from numpy import mean
+from network.bridge import NetworkBridge
 
 from ia.registry import AI_REGISTRY
 
@@ -19,13 +20,15 @@ def fix_string(string):
 
 class Engine:
     def __init__(self, scenario, ia, IP):
+        self.bridge = NetworkBridge()
+        self.bridge.connect()
         self.nbr_joueurs = 1
         self.team = self.nbr_joueurs-1
         self.scenario_name = scenario
         self.ia = fix_string(ia)
         self.IP = IP
         if self.scenario_name:
-            self.game_map = Map(self.team)
+            self.game_map = Map(self.bridge, self.team)
             Map.load(self.game_map, self.scenario_name)
         else:
             self.game_map = None
@@ -76,7 +79,6 @@ class Engine:
 
     def game_loop(self):
         """Boucle principale du jeu"""
-
         view_frame_time = max(1 / 100, 2 / (self.max_fps + self.min_fps))  # <-- 1/FPS au demarrage
         self.turn_time_target = 1.0 / self.tps  # en secondes
         max_turn_time = self.turn_time_target
@@ -139,11 +141,24 @@ class Engine:
                 continue
             if unit.team == self.ia.team:
                 self.ia.play_turn(unit, self.current_turn)
-            else :
-                # /!\ ici on devrait recevoir les info reseau du joueur distant /!\
-                
-                pass
+        
+        while True:
+            event = self.bridge.receive_event()
+            if not event:
+                break
+            self.apply_ennemy_order(event)
+            
+
 ##########################################################################
+
+    def apply_ennemy_order(self, event):
+        if event[0] == "UNIT_SPAWN":
+            self.game_map.add_unit(event[4], event[5], event[1], event[3], event[2])
+            self.units.append(self.game_map.get_unit(event[4], event[5]))
+        elif event[0] == "UNIT_MOVE":
+            self.game_map.move_unit(self.game_map.get_unit_by_id(event[1]), (event[2], event[3]))
+        elif event[0] == "UNIT_ATTACK":
+            self.game_map.attack2(self.game_map.get_unit_by_id(event[1]), self.game_map.get_unit_by_id(event[2]))
 
     def update_units(self,time_per_tick):
         for unit in self.units:

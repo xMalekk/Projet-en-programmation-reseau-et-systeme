@@ -5,7 +5,7 @@ import sys
 from typing import Any, Optional, Tuple
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from Projet_Python.battle.events import encode_event, decode_event
+from battle.events import encode_event, decode_event
 
 HEADER = struct.Struct("!II")  # (type, payload_size)
 IPC_MESSAGE_CONTROL = 1
