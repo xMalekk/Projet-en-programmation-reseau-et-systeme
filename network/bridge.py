@@ -1,62 +1,83 @@
+﻿import os
 import socket
-import os
+import struct
 import sys
+from typing import Any, Optional, Tuple
 
-# On garde ton système d'import pour events.py
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from Projet_Python.battle.events import encode_event, decode_event
 
-class NetworkBridge:
-    def __init__(self, host="127.0.0.1", port=12345):
-        self.addr = (host, port)
-        self.sock = None
+HEADER = struct.Struct("!II")  # (type, payload_size)
+IPC_MESSAGE_CONTROL = 1
+IPC_MESSAGE_EVENT = 2
+IPC_MESSAGE_SHUTDOWN = 3
+MAX_PACKET_SIZE = 65535
 
-    def connect(self):
-        """
-        En UDP, on prépare juste la socket.
-        """
+class NetworkBridge:
+    def __init__(self, ipc_host="127.0.0.1", ipc_port=21000, local_port=0):
+        self.ipc_addr = (ipc_host, ipc_port)
+        self.local_port = local_port
+        self.sock: Optional[socket.socket] = None
+
+    def connect(self) -> bool:
         try:
-            # socket.SOCK_DGRAM = UDP
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            # On met un timeout de 0 pour que receive_event ne bloque pas le jeu
+            self.sock.bind(("127.0.0.1", self.local_port))
             self.sock.setblocking(False)
-            print(f"Socket UDP prête pour {self.addr}")
+            print(f"[bridge] UDP prêt sur {self.sock.getsockname()} -> {self.ipc_addr}")
+            self._send_packet(IPC_MESSAGE_CONTROL, b"HELLO")
             return True
-        except Exception as e:
-            print(f"Erreur socket UDP : {e}")
+        except Exception as exc:
+            print(f"[bridge] échec de connexion UDP: {exc}")
+            if self.sock:
+                self.sock.close()
+            self.sock = None
             return False
 
-    def send_event(self, event_type, *args):
-        """
-        Envoie un message type "MOVE,1,10,20" en UDP.
-        """
+    def _send_packet(self, msg_type: int, payload: bytes) -> None:
         if not self.sock:
             return
-
+        payload = payload or b""
+        header = HEADER.pack(msg_type, len(payload))
         try:
-            # On utilise ta nouvelle fonction encode avec les virgules
-            message = encode_event(event_type, *args)
-            self.sock.sendto(message, self.addr)
-        except Exception as e:
-            print(f"Erreur d'envoi UDP : {e}")
+            self.sock.sendto(header + payload, self.ipc_addr)
+        except Exception as exc:
+            print(f"[bridge] erreur d'envoi UDP: {exc}")
 
-    def receive_event(self):
-        """
-        Écoute si un paquet UDP est arrivé.
-        """
+    def send_event(self, event_type: str, *args: Any) -> None:
+        payload = encode_event(event_type, *args)
+        self._send_packet(IPC_MESSAGE_EVENT, payload)
+
+    def send_shutdown(self) -> None:
+        self._send_packet(IPC_MESSAGE_SHUTDOWN, b"shutdown")
+
+    def receive_event(self) -> Optional[Tuple[str, ...]]:
         if not self.sock:
             return None
-
         try:
-            # On lit le paquet (1024 octets max, bien assez pour une ligne de texte)
-            data, _ = self.sock.recvfrom(1024)
-            # On utilise ta nouvelle fonction decode
-            return decode_event(data)
+            data, _ = self.sock.recvfrom(MAX_PACKET_SIZE)
         except (BlockingIOError, socket.error):
-            # Rien n'est arrivé, on continue la boucle du jeu
             return None
 
-    def disconnect(self):
+        if len(data) < HEADER.size:
+            return None
+        msg_type, size = HEADER.unpack_from(data)
+        payload = data[HEADER.size:HEADER.size + size]
+
+        if msg_type == IPC_MESSAGE_EVENT:
+            return decode_event(payload)
+        if msg_type == IPC_MESSAGE_CONTROL:
+            return ("CONTROL", payload.decode(errors="ignore"))
+        if msg_type == IPC_MESSAGE_SHUTDOWN:
+            return ("SHUTDOWN",)
+        return None
+
+    def disconnect(self) -> None:
         if self.sock:
+            try:
+                self.send_shutdown()
+            except Exception:
+                pass
             self.sock.close()
-            print("Socket UDP fermée.")
+            self.sock = None
+            print("[bridge] socket UDP fermée")
