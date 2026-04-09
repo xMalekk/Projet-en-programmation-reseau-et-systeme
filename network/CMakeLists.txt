@@ -13,8 +13,8 @@ set(MEDIEVAIL_NET_CORE_SOURCES
     src/ipc/udp_local.c
 )
 
-add_library(medievail_net_core )
-target_include_directories(medievail_net_core PUBLIC /include)
+add_library(medievail_net_core ${MEDIEVAIL_NET_CORE_SOURCES})
+target_include_directories(medievail_net_core PUBLIC include)
 
 if(MEDIEVAIL_ENABLE_WARNINGS)
     if(MSVC)
