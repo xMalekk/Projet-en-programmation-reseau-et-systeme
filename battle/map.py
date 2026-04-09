@@ -8,8 +8,9 @@ from battle.scenario import Scenario
 
 
 class Map:
-    def __init__(self, team,  p=50, q=50):
+    def __init__(self, bridge, team,  p=50, q=50):
         """Initialise une carte de taille p x q"""
+        self.bridge = bridge
         self.team = team
         self.p = p
         self.q = q
@@ -37,9 +38,9 @@ class Map:
 
     marge = 1.01  # Facteur de marge pour la détection de collision (pour éviter que les unités se touchent de trop près)
 
-    def add_unit(self, x, y, type, id):
+    def add_unit(self, x, y, type, id, team):
         """Permet d'ajouter une unité à la carte aux coordonnées (x, y)"""
-        unit = Unit().get_by_type(id, type, self.team, (x, y))
+        unit = Unit().get_by_type(id, type, team, (x, y))
         if unit.size <= x < self.p - unit.size and unit.size <= y < self.q - unit.size:
             for pos, other_unit in self.map.items():
                 if other_unit is not None:
@@ -47,6 +48,9 @@ class Map:
                     if dist < self.marge * (unit.size + other_unit.size):
                         return  # Collision détecté, n'ajoute pas l'unité
             self.map[(x, y)] = unit
+            # Envoi message Unit_Spawn
+            if unit.team == self.team:
+                self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, x, y)
             
 
     #def get_unit(self, x, y):
@@ -66,7 +70,7 @@ class Map:
         for i in range(len(scenario)):
             x, y, type = scenario[i]
             id = str(self.team) + str(i)
-            self.add_unit(x, y, type, id)
+            self.add_unit(x, y, type, id, self.team)
 
 
     #############################
@@ -85,6 +89,9 @@ class Map:
         self.map.pop(unit.position, None)  # Retire l'unité de sa position actuelle
         self.map[dest] = unit  # Place l'unité à sa nouvelle position
         unit.position = dest  # MaJ attribue de unit
+        # Envoi message Move_Unit
+        if unit.team == self.team:
+            self.bridge.send_event("UNIT_MOVE", unit.id, dest[0], dest[1])
 
     def move_unit(self, unit, dest, depth=0, R=1 / 60):
 
@@ -283,6 +290,10 @@ class Map:
 
         angle = atan2(target.position[1] - unit.position[1], target.position[0] - unit.position[0]) + 3.15
         unit.orientation = (round(angle * 8 / 6.28) + 3) % 8
+
+        # Envoi message Attaque
+        if unit.team == self.team:
+            self.bridge.send_event("UNIT_ATTACK", unit.id, unit.target.id)
 
         if unit.type == 'C' or unit.type == 'S':
             unit.time_until_next_attack = unit.reload_time

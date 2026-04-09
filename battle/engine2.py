@@ -4,6 +4,7 @@ import visuals.gui_view as gui
 from collections import deque
 from random import randint
 from numpy import mean
+from network.bridge import NetworkBridge
 
 from ia.registry import AI_REGISTRY
 
@@ -19,13 +20,15 @@ def fix_string(string):
 
 class Engine:
     def __init__(self, scenario, ia, IP):
+        self.bridge = NetworkBridge()
+        self.bridge.connect()
         self.nbr_joueurs = 1
         self.team = self.nbr_joueurs-1
         self.scenario_name = scenario
         self.ia = fix_string(ia)
         self.IP = IP
         if self.scenario_name:
-            self.game_map = Map(self.team)
+            self.game_map = Map(self.bridge, self.team)
             Map.load(self.game_map, self.scenario_name)
         else:
             self.game_map = None
