@@ -3,192 +3,252 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/select.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <signal.h>
 
-#include "medievail_net/ipc.h"
+#include "app.h"
+#include "ipc.h"
+#include "log.h"
 
-#define NET_PORT 8080
+#define DEFAULT_LISTEN_PORT 20000
+#define MAX_DATAGRAM_SIZE 65535
 
-//redéclaration de la structure ici pour avoir le droit de lire fd
-struct IPCConnection {
-    int fd;
-    struct sockaddr_in local_addr;
-    struct sockaddr_in remote_addr;
-    int remote_known;
-};
-
-volatile int is_running = 1;
-
-void handle_sigint(int sig) {
-    printf("\n[Daemon] Signal d'arrêt reçu.\n");
-    is_running = 0;
-}
-
-// Format strict et minimaliste envoyé sur le réseau Internet/LAN (8 octets + données)
+// Format strict réseau
 typedef struct __attribute__((packed)) {
     uint32_t type;
     uint32_t payload_size;
 } NetHeader;
 
-// initialisation du socket réseau public
-int init_network_socket(int port) {
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (fd < 0) {
-        perror("[-] Erreur socket réseau");
-        exit(EXIT_FAILURE);
-    }
 
-    int opt = 1;
-    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+// Structure UdpRouter
+typedef struct {
+    int fd;
+    struct sockaddr_in *peers;
+    int peer_count;
+} UdpRouter;
 
-    // passage en non-bloquant
+
+// Helpers généraux
+void set_nonblocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
 
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(port);
+int create_udp_socket(uint16_t port) {
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) return -1;
 
-    if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        perror("[-] Erreur bind réseau");
-        exit(EXIT_FAILURE);
+    struct sockaddr_in bind_addr;
+    memset(&bind_addr, 0, sizeof(bind_addr));
+    bind_addr.sin_family = AF_INET;
+    bind_addr.sin_addr.s_addr = INADDR_ANY;
+    bind_addr.sin_port = htons(port);
+
+    if (bind(fd, (struct sockaddr *)&bind_addr, sizeof(bind_addr)) < 0) {
+        close(fd);
+        return -1;
     }
-
+    
+    set_nonblocking(fd);
     return fd;
 }
 
-// fonction principale (boucle)
-int net_app_run(void) {
-    signal(SIGINT, handle_sigint);
-    printf("[Daemon] Démarrage. En attente sur le port réseau %d...\n", NET_PORT);
+// Fonction utilitaire pour éviter les doublons
+int same_peer(struct sockaddr_in *a, struct sockaddr_in *b) {
+    return (a->sin_addr.s_addr == b->sin_addr.s_addr && a->sin_port == b->sin_port);
+}
 
-    // initialisation du réseau externe (vers l'autre PC)
-    int network_fd = init_network_socket(NET_PORT);
-    struct sockaddr_in remote_peer_addr;
-    int has_remote_peer = 0;
+void udp_router_add_peer(UdpRouter *router, struct sockaddr_in *addr) {
+    for (int i = 0; i < router->peer_count; i++) {
+        if (same_peer(&router->peers[i], addr)) return;
+    }
 
-    // initialisation du réseau interne 
-    IPCConnection *ipc_conn = ipc_connection_create("127.0.0.1:21000");
-    if (!ipc_conn) {
-        fprintf(stderr, "[-] Impossible de créer l'IPC.\n");
-        close(network_fd);
+    router->peers = realloc(router->peers, sizeof(struct sockaddr_in) * (router->peer_count + 1));
+    router->peers[router->peer_count] = *addr;
+    router->peer_count++;
+    
+    log_info("[Router] Nouveau joueur enregistré : %s:%d", inet_ntoa(addr->sin_addr), ntohs(addr->sin_port));
+}
+
+// Transforme une chaîne "IP:PORT" en structure sockaddr_in
+int parse_peer_spec(const char *spec, struct sockaddr_in *addr) {
+    char buffer[256];
+    strncpy(buffer, spec, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0'; // Sécurité
+
+    char *colon = strchr(buffer, ':');
+    if (!colon) return -1; 
+
+    *colon = '\0'; // Coupe la chaîne en deux à l'endroit du ':'
+    int port = atoi(colon + 1);
+
+    memset(addr, 0, sizeof(*addr));
+    addr->sin_family = AF_INET;
+    addr->sin_port = htons(port);
+    
+    // Convertit l'IP texte en format binaire réseau
+    if (inet_pton(AF_INET, buffer, &addr->sin_addr) <= 0) {
+        return -1;
+    }
+    return 0;
+}
+
+void udp_router_init(UdpRouter *router, const NetAppConfig *config) {
+    router->peer_count = 0;
+    router->peers = NULL;
+    uint16_t port = (config->listen_port > 0) ? config->listen_port : DEFAULT_LISTEN_PORT;
+    router->fd = create_udp_socket(port);
+    
+    // Chargement de la liste initiale des pairs depuis la config
+    if (config->peer_addresses != NULL && config->peer_count > 0) {
+        for (size_t i = 0; i < config->peer_count; i++) {
+            struct sockaddr_in addr;
+            if (parse_peer_spec(config->peer_addresses[i], &addr) == 0) {
+                // On réutilise udp_router_add_peer pour les enregistrer proprement
+                udp_router_add_peer(router, &addr);
+            } else {
+                log_warning("[Router] Impossible de parser l'adresse du pair : %s", config->peer_addresses[i]);
+            }
+        }
+    }
+}
+
+void udp_router_close(UdpRouter *router) {
+    if (router->fd >= 0) close(router->fd);
+    if (router->peers) free(router->peers);
+    router->peer_count = 0;
+}
+
+
+// Transfert réseau <-> IPC
+void relay_event_to_peers(UdpRouter *router, IPCMessage *msg) {
+    size_t total_size = sizeof(NetHeader) + msg->payload_size;
+    char *packet = malloc(total_size);
+    if (!packet) return;
+
+    // En-tête
+    NetHeader hdr;
+    hdr.type = htonl((uint32_t)msg->type);
+    hdr.payload_size = htonl(msg->payload_size);
+    memcpy(packet, &hdr, sizeof(NetHeader));
+    
+    // Payload
+    if (msg->payload_size > 0 && msg->payload) {
+        memcpy(packet + sizeof(NetHeader), msg->payload, msg->payload_size);
+    }
+
+    // Multicast Best-Effort (envoie à tout les pairs)
+    for (int i = 0; i < router->peer_count; i++) {
+        sendto(router->fd, packet, total_size, 0, (struct sockaddr *)&router->peers[i], sizeof(struct sockaddr_in));
+    }
+    
+    free(packet);
+}
+
+void pump_network_incoming(UdpRouter *router, IPCConnection *ipc_conn) {
+    char buffer[MAX_DATAGRAM_SIZE];
+    struct sockaddr_in sender_addr;
+    socklen_t addr_len = sizeof(sender_addr);
+
+    // Boucle pour vider le buffer réseau (non-bloquant)
+    while (1) {
+        ssize_t received = recvfrom(router->fd, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &addr_len);
+        
+        if (received < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) break; 
+            continue;
+        }
+
+        if (received >= (ssize_t)sizeof(NetHeader)) {
+            // Enregistre l'adresse comme nouveau peer
+            udp_router_add_peer(router, &sender_addr);
+
+            // Vérifie la taille et extrait l'en-tête
+            NetHeader *hdr = (NetHeader *)buffer;
+            uint32_t type = ntohl(hdr->type);
+            uint32_t p_size = ntohl(hdr->payload_size);
+
+            // Construit le message et envoie vers Python via IPC
+            if (received >= (ssize_t)(sizeof(NetHeader) + p_size)) {
+                IPCMessage out_msg;
+                out_msg.type = (IPCMessageType)type;
+                out_msg.payload_size = p_size;
+                out_msg.payload = (p_size > 0) ? (unsigned char *)(buffer + sizeof(NetHeader)) : NULL;
+
+                ipc_connection_send(ipc_conn, &out_msg);
+            }
+        }
+    }
+}
+
+// Affichage de la configuration 
+void log_config(const NetAppConfig *config) {
+    log_info("Configuration du Daemon");
+    log_info("ID Joueur    : %s", config->player_id ? config->player_id : "Inconnu");
+    log_info("Endpoint IPC : %s", config->ipc_endpoint);
+    log_info("Port réseau  : %d", config->listen_port > 0 ? config->listen_port : DEFAULT_LISTEN_PORT);
+    log_info("Pairs init.  : %zu", config->peer_count);
+}
+
+
+// Fonction principale 
+int net_app_run(const NetAppConfig *config) {
+    if (!config) {
+        log_error("Configuration invalide.");
         return EXIT_FAILURE;
     }
 
-    char buffer[65535]; // buffer réseau
+    log_config(config);
 
-    while (is_running) {
-        fd_set readfds;
-        FD_ZERO(&readfds);
-        
-        int max_fd = network_fd;
-        FD_SET(network_fd, &readfds);
+    // Création de l'IPC 
+    IPCConnection *ipc_conn = ipc_connection_create(config->ipc_endpoint);
+    if (!ipc_conn) {
+        log_error("Impossible de créer l'IPC.");
+        return EXIT_FAILURE;
+    }
 
-        if (ipc_conn->fd >= 0) {
-            FD_SET(ipc_conn->fd, &readfds);
-            if (ipc_conn->fd > max_fd) {
-                max_fd = ipc_conn->fd;
+    // Initialisation du routeur (lien distant avec le réseau)
+    UdpRouter router;
+    udp_router_init(&router, config);
+    if (router.fd < 0) {
+        log_error("Impossible d'initialiser le routeur UDP.");
+        ipc_connection_destroy(ipc_conn);
+        return EXIT_FAILURE;
+    }
+
+    int running = 1;
+    log_info("[Daemon] En cours d'exécution...");
+
+    while (running) {
+        // Traitement du réseau entrant vers l'IPC
+        pump_network_incoming(&router, ipc_conn);
+
+        // Traitement de l'IPC entrant vers le réseau (Timeout 50ms)
+        IPCMessage py_msg;
+        if (ipc_connection_poll(ipc_conn, &py_msg, 50) > 0) {
+            
+            if (py_msg.type == IPC_MESSAGE_SHUTDOWN) {
+                // On prévient avant de quitter
+                relay_event_to_peers(&router, &py_msg);
+                running = 0;
+            } 
+            else if (py_msg.type == IPC_MESSAGE_EVENT || py_msg.type == IPC_MESSAGE_CONTROL) {
+                // Relai de l'événement à tous les joueurs
+                relay_event_to_peers(&router, &py_msg);
+            } 
+            else {
+                log_warning("Type de message IPC inconnu: %d", py_msg.type);
             }
-        }
 
-        struct timeval tv = {1, 0};
-        int activity = select(max_fd + 1, &readfds, NULL, NULL, &tv);
-
-        if (activity < 0 && errno != EINTR) break;
-        if (activity == 0) continue;
-     
-        // FLUX 1 : Réseau (distant) ---> IPC (local)
-   
-        if (FD_ISSET(network_fd, &readfds)) {
-            struct sockaddr_in client_addr;
-            socklen_t client_len = sizeof(client_addr);
-            
-            ssize_t received = recvfrom(network_fd, buffer, sizeof(buffer), 0, 
-                                        (struct sockaddr *)&client_addr, &client_len);
-            
-            if (received >= (ssize_t)sizeof(NetHeader)) {
-                // sauvegarde de l'adresse de l'adversaire s'il nous parle
-                if (!has_remote_peer) {
-                    remote_peer_addr = client_addr;
-                    has_remote_peer = 1;
-                    printf("[Réseau] Connecté à l'adversaire : %s:%d\n", 
-                           inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-                }
-
-                // lecture de l'en-tête (type et taille)
-                NetHeader *hdr = (NetHeader *)buffer;
-                uint32_t type = ntohl(hdr->type);
-                uint32_t p_size = ntohl(hdr->payload_size);
-
-                // vérification de sécurité
-                if (received >= (ssize_t)(sizeof(NetHeader) + p_size)) {
-                    IPCMessage out_msg;
-                    out_msg.type = (IPCMessageType)type;
-                    out_msg.payload_size = p_size;
-                    out_msg.payload = (p_size > 0) ? (unsigned char *)(buffer + sizeof(NetHeader)) : NULL;
-
-                    // envoi vers le code de ton camarade
-                    ipc_connection_send(ipc_conn, &out_msg);
-                    printf("[Routage] PC distant -> Python (Type: %d, Taille: %u)\n", type, p_size);
-                }
-            }
-        }
-
-        // FLUX 2 : IPC (local) ---> Réseau (distant)
-
-        if (ipc_conn->fd >= 0 && FD_ISSET(ipc_conn->fd, &readfds)) {
-            IPCMessage msg;
-            
-            // eécupère l'information depuis ton Python
-            if (ipc_connection_poll(ipc_conn, &msg, 0) > 0) {
-                
-                if (msg.type == IPC_MESSAGE_SHUTDOWN) {
-                    is_running = 0;
-                    ipc_message_free(&msg);
-                    break;
-                }
-
-                if (has_remote_peer) {
-                    size_t total_size = sizeof(NetHeader) + msg.payload_size;
-                    char *net_packet = malloc(total_size);
-                    
-                    if (net_packet) {
-                        // préparation de l'en-tête pour le réseau
-                        NetHeader hdr;
-                        hdr.type = htonl((uint32_t)msg.type);
-                        hdr.payload_size = htonl(msg.payload_size);
-                        
-                        memcpy(net_packet, &hdr, sizeof(NetHeader));
-                        
-                        // ajout des données Python
-                        if (msg.payload_size > 0 && msg.payload) {
-                            memcpy(net_packet + sizeof(NetHeader), msg.payload, msg.payload_size);
-                        }
-
-                        // envoi sur Internet / LAN
-                        sendto(network_fd, net_packet, total_size, 0, 
-                               (struct sockaddr *)&remote_peer_addr, sizeof(remote_peer_addr));
-                        
-                        printf("[Routage] Python -> PC distant (Type: %d, Taille: %u)\n", msg.type, msg.payload_size);
-                        free(net_packet);
-                    }
-                } else {
-                    printf("[Alerte] Python veut envoyer, mais aucun adversaire n'est encore connecté.\n");
-                }
-                
-                ipc_message_free(&msg);
+            ipc_message_free(&py_msg);
         }
     }
 
-    close(network_fd);
+    // Nettoyage complet
+    udp_router_close(&router);
     ipc_connection_destroy(ipc_conn);
-    printf("[Daemon] Arrêt propre.\n");
+    log_info("[Daemon] Arrêt propre du programme.");
     
     return EXIT_SUCCESS;
 }
