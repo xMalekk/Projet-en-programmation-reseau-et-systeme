@@ -1,5 +1,3 @@
-import json
-
 # Types d'événements 
 JOIN = "J"
 UNIT_SPAWN = "SPAWN"
