@@ -7,7 +7,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <netdb.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -71,7 +70,7 @@ static int create_udp_socket(int port) {
 }
 
 static int parse_peer_spec(const char *spec, struct sockaddr_in *out_addr) {
-    if (!spec || !spec[0]) return -1;
+    if (!spec || !spec[0] || !out_addr) return -1;
     const char *colon = strrchr(spec, ':');
     if (!colon || colon == spec) return -1;
 
@@ -84,21 +83,12 @@ static int parse_peer_spec(const char *spec, struct sockaddr_in *out_addr) {
     int port = atoi(colon + 1);
     if (port <= 0 || port > 65535) return -1;
 
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_DGRAM;
-
-    struct addrinfo *res = NULL;
-    if (getaddrinfo(host, NULL, &hints, &res) != 0 || !res) {
+    memset(out_addr, 0, sizeof(*out_addr));
+    out_addr->sin_family = AF_INET;
+    out_addr->sin_port = htons((uint16_t)port);
+    if (inet_pton(AF_INET, host, &out_addr->sin_addr) != 1) {
         return -1;
     }
-
-    struct sockaddr_in addr = *(struct sockaddr_in *)res->ai_addr;
-    addr.sin_port = htons((uint16_t)port);
-    freeaddrinfo(res);
-
-    *out_addr = addr;
     return 0;
 }
 
@@ -327,3 +317,4 @@ int net_app_run(const NetAppConfig *config) {
     log_info("medievail_net arrêté ");
     return 0;
 }
+
