@@ -29,7 +29,10 @@ class General:
         
         for type in ('K','C','P','L','S'):
             self.enemy_units_dict[type]=self.get_enemy_units_bytype(type)
-        
+
+    def ack_unit(self,unit): 
+        self.my_units.append(unit)
+        self.my_units_dict[unit.type] = unit
     
     def _is_alive(self, unit: Unit)-> bool:
         """Vérifie si une unité est vivante"""
