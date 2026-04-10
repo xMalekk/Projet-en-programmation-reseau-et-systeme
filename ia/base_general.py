@@ -31,8 +31,13 @@ class General:
             self.enemy_units_dict[type]=self.get_enemy_units_bytype(type)
 
     def ack_unit(self,unit): 
-        self.my_units.append(unit)
-        self.my_units_dict[unit.type] = unit
+        if unit.team==self.team:
+            self.my_units.append(unit)
+            self.my_units_dict[unit.type] = unit
+        else:
+            self.enemy_units_dict[unit.type] = unit
+            self.enemy_units.append(unit)
+
     
     def _is_alive(self, unit: Unit)-> bool:
         """Vérifie si une unité est vivante"""
