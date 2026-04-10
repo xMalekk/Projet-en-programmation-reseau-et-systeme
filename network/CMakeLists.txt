@@ -10,11 +10,11 @@ option(MEDIEVAIL_ENABLE_WARNINGS "Enable compiler warnings" ON)
 set(MEDIEVAIL_NET_CORE_SOURCES
     src/core/app.c
     src/core/log.c
-    src/ipc/unix_socket.c
+    src/ipc/udp_local.c
 )
 
-add_library(medievail_net_core )
-target_include_directories(medievail_net_core PUBLIC /include)
+add_library(medievail_net_core ${MEDIEVAIL_NET_CORE_SOURCES})
+target_include_directories(medievail_net_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 if(MEDIEVAIL_ENABLE_WARNINGS)
     if(MSVC)
