@@ -165,6 +165,7 @@ class Engine:
             self.game_map.add_unit(event[4], event[5], event[1], event[3], event[2])
             self.units.append(self.game_map.get_unit(event[4], event[5]))
             self.view.all_units.append(self.game_map.get_unit(event[4], event[5]))
+            self.ia.ack_unit(self.game_map.get_unit(event[4], event[5]))
         elif event[0] == "UNIT_MOVE":
             self.game_map.move_unit(self.game_map.get_unit_by_id(event[1]), (event[2], event[3]))
         elif event[0] == "UNIT_ATTACK":
