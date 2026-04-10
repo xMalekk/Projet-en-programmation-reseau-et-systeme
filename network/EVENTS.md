@@ -21,11 +21,10 @@ Tous les messages échangés entre Python ⇄ démon C et entre pairs distants u
 | Type | Payload attendu | Usage |
 | ---- | ----------------| ----- |
 | `JOIN` | `{ player_id, scenario, seed }` | Annonce la présence d’un joueur et les paramètres de partie. |
-| `UNIT_SPAWN` | `{ team, unit_type, position:{x,y}, hp }` | Synchronise l’apparition d’une nouvelle unité. |
-| `UNIT_MOVE` | `{ from:{x,y}, to:{x,y}, speed }` | Informe les pairs d’un déplacement. |
+| `UNIT_SPAWN` | `{ team, unit_type, position:{x,y} }` | Synchronise l’apparition d’une nouvelle unité. |
+| `UNIT_MOVE` | `{ from:{x,y}, to:{x,y} }` | Informe les pairs d’un déplacement. |
 | `UNIT_STATE` | `{ position:{x,y}, hp, status, target }` | Rafraîchit périodiquement l’état pour corriger les divergences. |
-| `UNIT_ATTACK` | `{ target_id, damage, attack_type }` | Signale un coup porté (corps-à-corps ou projectile). |
-| `PROJECTILE_SPAWN` | `{ origin:{x,y}, direction:{x,y}, projectile_type }` | Optionnel : suivi visuel des tirs. |
+| `UNIT_ATTACK` | `{ attacker, target }` | Signale un coup porté (corps-à-corps ou projectile). |
 | `PROPERTY_REQUEST` | `{ action, args }` | Demande la propriété réseau d’une unité avant d’exécuter l’action. |
 | `PROPERTY_GRANT` | `{ owner: player_id, state: { position, hp, status } }` | Transfère la propriété et fournit l’état cohérent. |
 | `PROPERTY_DENY` | `{ reason }` | Refus d’une demande (unité détruite, autre action prioritaire, etc.). |
