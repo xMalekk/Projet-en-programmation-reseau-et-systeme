@@ -7,11 +7,15 @@
 #include "medievail_net/app.h"
 #include "medievail_net/log.h"
 
+
+#define _GNU_SOURCE
+
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 
 // Affiche l'aide d'utilisation du démon et liste les options acceptées.
 static void print_usage(const char *prog_name) {
