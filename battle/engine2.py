@@ -19,19 +19,26 @@ def fix_string(string):
         return str_void
 
 class Engine:
-    def __init__(self, scenario, ia, IP):
-        self.bridge = NetworkBridge()
+    def __init__(self, scenario, ia, ipc_port):
+        self.bridge = NetworkBridge(ipc_port=ipc_port)
         self.bridge.connect()
-        self.nbr_joueurs = 1
-        self.team = self.nbr_joueurs-1
-        self.scenario_name = scenario
-        self.ia = fix_string(ia)
-        self.IP = IP
-        if self.scenario_name:
-            self.game_map = Map(self.bridge, self.team)
-            Map.load(self.game_map, self.scenario_name)
+        if not scenario:
+            self.bridge.send_event("JOIN")
+            while True:
+                time.sleep(2)
+                message = self.bridge.receive_event()
+                if message and message[0] == "ACCEPT":
+                    self.nbr_joueurs = int(message[1])
+                    self.scenario_name = message[2]
+                    break
         else:
-            self.game_map = None
+            self.nbr_joueurs = 1
+            self.scenario_name = scenario
+        self.team = self.nbr_joueurs-1
+        self.ia = fix_string(ia)
+        self.game_map = Map(self.bridge, self.team)
+        Map.load(self.game_map, self.scenario_name)
+
         self.units = []
         self.projectiles = []
         self.game_pause = False
@@ -72,13 +79,14 @@ class Engine:
         if self.ia not in AI_REGISTRY:
             raise ValueError(f"IA '{self.ia}' non reconnue.")
 
-        self.ia = AI_REGISTRY[self.ia1](self.team, self.game_map)
+        self.ia = AI_REGISTRY[self.ia](self.team, self.game_map)
 
         self.ia.initialize()
     
 
     def game_loop(self):
         """Boucle principale du jeu"""
+        self.initialize_ai()
         view_frame_time = max(1 / 100, 2 / (self.max_fps + self.min_fps))  # <-- 1/FPS au demarrage
         self.turn_time_target = 1.0 / self.tps  # en secondes
         max_turn_time = self.turn_time_target
@@ -155,10 +163,18 @@ class Engine:
         if event[0] == "UNIT_SPAWN":
             self.game_map.add_unit(event[4], event[5], event[1], event[3], event[2])
             self.units.append(self.game_map.get_unit(event[4], event[5]))
+            self.view.all_units.append(self.game_map.get_unit(event[4], event[5]))
         elif event[0] == "UNIT_MOVE":
             self.game_map.move_unit(self.game_map.get_unit_by_id(event[1]), (event[2], event[3]))
         elif event[0] == "UNIT_ATTACK":
             self.game_map.attack2(self.game_map.get_unit_by_id(event[1]), self.game_map.get_unit_by_id(event[2]))
+        elif event[0] == "JOIN":
+            self.nbr_joueurs += 1
+            self.bridge.send_event("ACCEPT", self.nbr_joueurs, self.scenario_name)
+            for unit in self.units:
+                if unit.team == self.team:
+                    self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, unit.position[0], unit.position[1])
+        # elif event[0] == "UNIT_STATE":
 
     def update_units(self,time_per_tick):
         for unit in self.units:

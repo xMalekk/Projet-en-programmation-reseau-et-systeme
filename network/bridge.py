@@ -47,6 +47,7 @@ class NetworkBridge:
     def send_event(self, event_type: str, *args: Any) -> None:
         payload = encode_event(event_type, *args)
         self._send_packet(IPC_MESSAGE_EVENT, payload)
+        print("[send py -> c]", event_type)
 
     def send_shutdown(self) -> None:
         self._send_packet(IPC_MESSAGE_SHUTDOWN, b"shutdown")
@@ -65,6 +66,7 @@ class NetworkBridge:
         payload = data[HEADER.size:HEADER.size + size]
 
         if msg_type == IPC_MESSAGE_EVENT:
+            print("[recv c -> py]", decode_event(payload)[0])
             return decode_event(payload)
         if msg_type == IPC_MESSAGE_CONTROL:
             return ("CONTROL", payload.decode(errors="ignore"))
