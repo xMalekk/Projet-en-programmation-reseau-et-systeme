@@ -39,13 +39,16 @@ class Engine:
         self.game_map = Map(self.bridge, self.team)
         Map.load(self.game_map, self.scenario_name)
 
-        self.units = []
         self.projectiles = []
         self.game_pause = False
         self.current_turn = 0
         self.is_running = False
         self.winner = None
         self.view = gui.GUI_view(self.game_map.p, self.game_map.q)
+        self.units = []
+        for pos in self.game_map.map:
+            self.units.append(self.game_map.map[pos])
+            self.view.all_units.append(self.game_map.map[pos])
         self.real_tps = 0
         # Historique des t/s des dernières turns (max 10)
         self.tab_game_tps = deque(maxlen=10)
@@ -66,8 +69,6 @@ class Engine:
         self.max_turns = 40000
         self.turn_fps = 0
         self.time_turn = 0
-        self.units = []
-
        
     def initialize_game(self):
 
@@ -171,6 +172,7 @@ class Engine:
         elif event[0] == "JOIN":
             self.nbr_joueurs += 1
             self.bridge.send_event("ACCEPT", self.nbr_joueurs, self.scenario_name)
+            time.sleep(0.5)
             for unit in self.units:
                 if unit.team == self.team:
                     self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, unit.position[0], unit.position[1])
