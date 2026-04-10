@@ -1,8 +1,3 @@
-﻿<<<<<<< Updated upstream
-﻿// Gabarit pour l’implémentation de la boucle principale du démon.
-// C’est ici que net_app_run sera codé plus tard.
-
-=======
 ﻿// medievail_net daemon: routeur UDP entre Python local et pairs distants
 
 #include "medievail_net/app.h"
@@ -339,4 +334,3 @@ int net_app_run(const NetAppConfig *config) {
     return 0;
 }
 
->>>>>>> Stashed changes
