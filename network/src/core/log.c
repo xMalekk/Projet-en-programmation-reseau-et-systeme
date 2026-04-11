@@ -1,6 +1,8 @@
 ﻿// Implémentation simple pour la journalisation du démon.
 // Fournit log_info/log_warn/log_error/log_debug avec time-stamp.
 
+#define _GNU_SOURCE
+
 #include "medievail_net/log.h"
 
 #include <stdarg.h>

@@ -267,6 +267,9 @@ class GUI_view:
                         color_display = "R"
                     case 1:
                         color_display = "B"
+                    case _:
+                        color_display = ""
+                        
 
                 # On charge le sprite si il n'existe pas encore
                 try:
@@ -293,6 +296,8 @@ class GUI_view:
                             color_bar = "red"
                         case 1:
                             color_bar = "blue"
+                        case _:
+                            color_bar = "white"
 
                 # display hitbox
                 if self.display_hitbox:
