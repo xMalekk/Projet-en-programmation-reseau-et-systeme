@@ -41,6 +41,11 @@ SIZE_PROJECTILE_JAVELOT = 7
 with open("data/units_sprites/offset_img.json", "r") as f:
     SPRITES_OFFSET = json.load(f)
 
+COLOR_TEAM_1 = "red"
+COLOR_TEAM_2 = "blue"
+COLOR_TEAM_3 = "green"
+COLOR_TEAM_4 = "yellow"
+
 class GUI_view:
     def __init__(self, width: int = MAX_WIDTH, height: int = MAX_HEIGHT, tile_w: int = TILE_W, tile_h: int = TILE_H):
         pygame.init()
@@ -264,9 +269,13 @@ class GUI_view:
                 else:
                     match unit.team:
                         case 0:
-                            color_display = "R"
+                            color_display = COLOR_TEAM_1[0].upper()
                         case 1:
-                            color_display = "B"
+                            color_display = COLOR_TEAM_2[0].upper()
+                        case 2:
+                            color_display = COLOR_TEAM_3[0].upper()
+                        case 3:
+                            color_display = COLOR_TEAM_4[0].upper()
 
                 # On charge le sprite si il n'existe pas encore
                 try:
@@ -290,9 +299,15 @@ class GUI_view:
                 
                 match unit.team:
                         case 0:
-                            color_bar = "red"
+                            color_bar = COLOR_TEAM_1
                         case 1:
-                            color_bar = "blue"
+                            color_bar = COLOR_TEAM_2
+                        case 2:
+                            color_bar = COLOR_TEAM_3
+                        case 3:
+                            color_bar = COLOR_TEAM_4
+                        case _:
+                            color_bar = "black"
 
                 # display hitbox
                 if self.display_hitbox:
@@ -405,9 +420,15 @@ class GUI_view:
             if unit.is_alive: 
                 match unit.team:
                     case 0:
-                        color = "red"
+                        color = COLOR_TEAM_1
                     case 1:
-                        color = "blue"
+                        color = COLOR_TEAM_2
+                    case 2:
+                        color = COLOR_TEAM_3
+                    case 3:
+                        color = COLOR_TEAM_4
+                    case _:
+                        color = "black"
 
                 adjust_pos = (x*self.size_mini_map[0]/self.size_map[0], y*self.size_mini_map[1]/self.size_map[1])
                 centre_position = (adjust_pos[0]-self.size_map[0]//2, adjust_pos[1]-self.size_map[1]//2)
