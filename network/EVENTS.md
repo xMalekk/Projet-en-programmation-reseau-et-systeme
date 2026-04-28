@@ -21,14 +21,15 @@ Tous les messages échangés entre Python ⇄ démon C et entre pairs distants u
 | Type | Payload attendu | Usage |
 | ---- | ----------------| ----- |
 | `JOIN` | `{ player_id, scenario, seed }` | Annonce la présence d’un joueur et les paramètres de partie. |
+| `ACCEPT` | `{ player_count, scenario }` | Accepte un nouvel arrivant et lui donne le scénario à charger. |
 | `UNIT_SPAWN` | `{ team, unit_type, position:{x,y} }` | Synchronise l’apparition d’une nouvelle unité. |
 | `UNIT_MOVE` | `{ from:{x,y}, to:{x,y} }` | Informe les pairs d’un déplacement. |
 | `UNIT_STATE` | `{ position:{x,y}, hp, status, target }` | Rafraîchit périodiquement l’état pour corriger les divergences. |
 | `UNIT_ATTACK` | `{ attacker, target }` | Signale un coup porté (corps-à-corps ou projectile). |
-| `PROPERTY_REQUEST` | `{ action, args }` | Demande la propriété réseau d’une unité avant d’exécuter l’action. |
-| `PROPERTY_GRANT` | `{ owner: player_id, state: { position, hp, status } }` | Transfère la propriété et fournit l’état cohérent. |
-| `PROPERTY_DENY` | `{ reason }` | Refus d’une demande (unité détruite, autre action prioritaire, etc.). |
-| `PROPERTY_RELEASE` | `{ next_owner?: player_id }` | Rend volontairement la propriété après une action. |
+| `PROPERTY_REQUEST` | `{ request_id, requester, unit_id, action, args }` | Demande la propriété réseau d’une unité avant d’exécuter l’action. |
+| `PROPERTY_GRANT` | `{ request_id, owner, unit_id, state, action, args }` | Transfère la propriété et fournit l’état cohérent. |
+| `PROPERTY_DENY` | `{ request_id, owner, unit_id, reason, state? }` | Refus d’une demande (unité détruite, autre action prioritaire, etc.). |
+| `PROPERTY_RELEASE` | `{ unit_id, owner, next_owner? }` | Rend volontairement la propriété après une action. |
 | `REPORT` | `{ kind, data }` | Événements hors combat (rapports, sauvegardes, pause). |
 | `SHUTDOWN` | `{}` | Demande d’arrêter la session proprement. |
 

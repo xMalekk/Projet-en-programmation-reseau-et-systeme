@@ -167,9 +167,9 @@ class Engine:
             self.view.all_units.append(self.game_map.get_unit(event[4], event[5]))
             self.ia.ack_unit(self.game_map.get_unit(event[4], event[5]))
         elif event[0] == "UNIT_MOVE":
-            self.game_map.move_unit(self.game_map.get_unit_by_id(event[1]), (event[2], event[3]))
+            self.game_map.sync_remote_move(event[1], (event[2], event[3]))
         elif event[0] == "UNIT_ATTACK":
-            self.game_map.attack2(self.game_map.get_unit_by_id(event[1]), self.game_map.get_unit_by_id(event[2]))
+            self.game_map.replicate_attack(event[1], event[2])
         elif event[0] == "JOIN":
             self.nbr_joueurs += 1
             self.bridge.send_event("ACCEPT", self.nbr_joueurs, self.scenario_name)

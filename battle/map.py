@@ -60,9 +60,29 @@ class Map:
         """Permet de retirer l'unité à la position (x, y)"""
         if (x, y) in self.map:
             self.map.pop((x, y), None)
-    
+
     def get_unit_by_id(self, unit_id):
-        return [self.map[pos] for pos in self.map if self.map[pos].id == unit_id][0]
+        """Retourne l'unité correspondant à l'identifiant ou None si introuvable."""
+        for unit in self.map.values():
+            if unit is None:
+                continue
+            if unit.id == unit_id:
+                return unit
+        return None
+
+    def sync_remote_move(self, unit_id, dest):
+        """
+        Déplace instantanément une unité contrôlée par l'adversaire vers la
+        position donnée sans recalculer l'itinéraire local.
+        """
+        unit = self.get_unit_by_id(unit_id)
+        if not unit:
+            return False
+        self.maj_unit_posi(unit, dest)
+        unit.state = "moving"
+        unit.destination = dest
+        unit.direction = (0, 0)
+        return True
 
     def load(self, scenario_name):
         """"Charge une carte depuis un scénario donné ou un fichier de sauvegarde"""
@@ -280,6 +300,36 @@ class Map:
     #  Partie Projectiles et fonction attack(unit,target)  #
     ########################################################
 
+    def _commit_attack(self, unit, target):
+        """Applique localement une attaque (utilisé en local et pour la synchro réseau)."""
+        unit.state = "attacking"
+        unit.target = target
+
+        angle = atan2(target.position[1] - unit.position[1], target.position[0] - unit.position[0]) + 3.15
+        unit.orientation = (round(angle * 8 / 6.28) + 3) % 8
+
+        if unit.team == self.team:
+            self.bridge.send_event("UNIT_ATTACK", unit.id, unit.target.id)
+
+        if unit.type in ('C', 'S'):
+            self.fire_projectile(unit, target)
+        else:
+            target.take_damage(unit)
+
+        unit.time_reset()
+
+    def replicate_attack(self, attacker_id, target_id):
+        """
+        Rejoue une attaque reçue depuis le réseau sans vérifier les conditions
+        locales (portée, temporisation, etc.).
+        """
+        attacker = self.get_unit_by_id(attacker_id)
+        target = self.get_unit_by_id(target_id)
+        if not attacker or not target:
+            return False
+        self._commit_attack(attacker, target)
+        return True
+
     def attack2(self, unit, target):
         if not unit.can_attack(target):
             return None  # Ne peut pas attaquer
@@ -288,28 +338,9 @@ class Map:
             angle = atan2(target.position[1] - unit.position[1], target.position[0] - unit.position[0]) + 3.15
             unit.orientation = (round(angle * 8 / 6.28) + 3) % 8
             return False
-        # commence l'attaque
-        unit.state = "attacking"
-        unit.target = target
 
-        angle = atan2(target.position[1] - unit.position[1], target.position[0] - unit.position[0]) + 3.15
-        unit.orientation = (round(angle * 8 / 6.28) + 3) % 8
-
-        # Envoi message Attaque
-        if unit.team == self.team:
-            self.bridge.send_event("UNIT_ATTACK", unit.id, unit.target.id)
-
-        if unit.type == 'C' or unit.type == 'S':
-            unit.time_until_next_attack = unit.reload_time
-            self.fire_projectile(unit, target)
-            unit.time_reset()
-            return None
-
-        unit.time_reset()
-        target.take_damage(unit)
-        # set cooldown
-
-        return
+        self._commit_attack(unit, target)
+        return None
 
     def fire_projectile(self, shooter, target):
         type = shooter.type
