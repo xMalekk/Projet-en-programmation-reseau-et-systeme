@@ -60,7 +60,7 @@ class Map:
         """Permet de retirer l'unité à la position (x, y)"""
         if (x, y) in self.map:
             self.map.pop((x, y), None)
-    
+
     def get_unit_by_id(self, unit_id):
         unit_in_list = [self.map[pos] for pos in self.map if self.map[pos].id == unit_id]
         if unit_in_list:
@@ -305,19 +305,15 @@ class Map:
         angle = atan2(target.position[1] - unit.position[1], target.position[0] - unit.position[0]) + 3.15
         unit.orientation = (round(angle * 8 / 6.28) + 3) % 8
 
-        # Envoi message Attaque
         if unit.team == self.team:
             self.bridge.send_event("UNIT_ATTACK", unit.id, unit.target.id)
 
-        if unit.type == 'C' or unit.type == 'S':
-            unit.time_until_next_attack = unit.reload_time
+        if unit.type in ('C', 'S'):
             self.fire_projectile(unit, target)
-            unit.time_reset()
-            return None
+        else:
+            target.take_damage(unit)
 
         unit.time_reset()
-        target.take_damage(unit)
-        # set cooldown
 
 
         return
