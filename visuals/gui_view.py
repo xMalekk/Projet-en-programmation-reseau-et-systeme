@@ -259,7 +259,7 @@ class GUI_view:
             # On choisi la couleur d'affichage
             if unit.is_alive:
                 if unit.get_hit>0:
-                    unit.get_hit -= 1/fps
+                    unit.get_hit -= 1/60
                     color_display = ""
                 else:
                     match unit.team:
