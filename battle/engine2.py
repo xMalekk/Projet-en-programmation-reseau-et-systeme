@@ -69,11 +69,6 @@ class Engine:
         self.max_turns = 40000
         self.turn_fps = 0
         self.time_turn = 0
-       
-    def initialize_game(self):
-
-        """donner IP pour celui qui rejoint, initialiser partie"""
-        #self.bridge.connect()
     
     def initialize_ai(self):
         """Initialise les deux IA"""
@@ -177,7 +172,22 @@ class Engine:
             for unit in self.units:
                 if unit.team == self.team:
                     self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, unit.position[0], unit.position[1])
-        # elif event[0] == "UNIT_STATE":
+        elif event[0] == "PROPERTY_REQUEST":
+            if self.game_map.get_unit_by_id(event[1]).is_alive :
+                if event[2] == "attack" :
+                    self.bridge.send_event("PROPERTY_GRANT", event[1], event[2], event[3])
+                elif event[2] == "move" :
+                    self.bridge.send_event("PROPERTY_GRANT", event[1], event[2], event[3], event[4])
+            else :
+                self.bridge.send_event("PROPERTY_DENY", event[1])
+        elif event[0] == "PROPERTY_GRANT":
+            if event[2] == "attack" :
+                self.game_map.attack2(self.game_map.get_unit_by_id(event[1]), self.game_map.get_unit_by_id(event[3]), property=True)
+            elif event[2] == "move" :
+                self.game_map.move_unit(self.game_map.get_unit_by_id(event[1]), (event[3], event[4]), property=True)
+        elif event[0] == "PROPERTY_DENY":
+            self.game_map.get_unit_by_id(event[1]).is_alive = False 
+            self.game_map.get_unit_by_id(event[1]).current_hp = 0
 
     def update_units(self,time_per_tick):
         for unit in self.units:

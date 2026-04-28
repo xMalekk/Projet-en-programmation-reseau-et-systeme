@@ -83,3 +83,10 @@ class NetworkBridge:
             self.sock.close()
             self.sock = None
             print("[bridge] socket UDP fermée")
+
+    def add_peer(self, ip: str, port: int = 20000) -> None:
+        """Envoie un message de contrôle au démon C pour ajouter une IP distante"""
+        # On formate le message sous la forme "PEER 192.168.1.50:20000"
+        payload = f"PEER {ip}:{port}".encode("utf-8")
+        self._send_packet(IPC_MESSAGE_CONTROL, payload)
+        print(f"[bridge] Demande d'ajout du peer {ip}:{port} envoyée au démon C.")

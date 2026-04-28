@@ -297,8 +297,24 @@ int net_app_run(const NetAppConfig *config) {
 
         switch (message.type) {
             case IPC_MESSAGE_EVENT:
-            case IPC_MESSAGE_CONTROL:
                 relay_event_to_peers(&message, &router);
+                break;
+            case IPC_MESSAGE_CONTROL:
+                if (message.payload && message.payload_size > 5 &&
+                    strncmp((const char *)message.payload, "PEER ", 5) == 0) {
+                    
+                    // On extrait l'IP ("192.168.x.x:20000")
+                    char spec[256];
+                    snprintf(spec, sizeof(spec), "%.*s", message.payload_size - 5, (char *)message.payload + 5);
+                    
+                    // On ajoute dynamiquement le peer !
+                    struct sockaddr_in addr;
+                    if (parse_peer_spec(spec, &addr) == 0) {
+                        udp_router_add_peer(&router, &addr);
+                    } else {
+                        log_warn("[ipc] requete PEER invalide: %s", spec);
+                    }
+                }
                 break;
             case IPC_MESSAGE_SHUTDOWN:
                 relay_event_to_peers(&message, &router);
