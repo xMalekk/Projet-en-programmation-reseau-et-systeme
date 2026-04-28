@@ -97,8 +97,12 @@ class Map:
         if unit.team == self.team:
             self.bridge.send_event("UNIT_MOVE", unit.id, dest[0], dest[1])
 
-    def move_unit(self, unit, dest, depth=0, R=1 / 60):
-
+    def move_unit(self, unit, dest, depth=0, R=1 / 60, property=None):
+        
+        if not property :
+            self.bridge.send_event("PROPERTY_REQUEST", unit.id, "move", dest[0], dest[1])
+            return None
+        
         """Permet de déplacer une unité dans la direction de dest, légalement avec résolution des collisions"""
 
         if unit.state == "attacking":
@@ -280,7 +284,10 @@ class Map:
     #  Partie Projectiles et fonction attack(unit,target)  #
     ########################################################
 
-    def attack2(self, unit, target):
+    def attack2(self, unit, target, property=None):
+        if not property :
+            self.bridge.send_event("PROPERTY_REQUEST", unit.id, "attack", target.id)
+            return None
         if not unit.can_attack(target):
             return None  # Ne peut pas attaquer
         if unit.time_before_next_attack > 0:
@@ -308,6 +315,7 @@ class Map:
         unit.time_reset()
         target.take_damage(unit)
         # set cooldown
+
 
         return
 
