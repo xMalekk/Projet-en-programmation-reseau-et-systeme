@@ -127,7 +127,7 @@ class Unit:
         #soustraction aux points de vie
         total_damage=max(1,total_damage)
         self.current_hp -= total_damage
-        self.get_hit = 0.2
+        self.get_hit = 10
         # HP n'est jamais negatif
         if self.current_hp < 0:
             self.current_hp = 0

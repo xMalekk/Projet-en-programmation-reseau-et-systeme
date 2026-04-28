@@ -258,17 +258,17 @@ class GUI_view:
 
             # On choisi la couleur d'affichage
             if unit.is_alive:
-                # if unit.get_hit>0:
-                #     unit.get_hit -= 1/fps
-                #     color_display = ""
-                # else:
-                match unit.team:
-                    case 0:
-                        color_display = "R"
-                    case 1:
-                        color_display = "B"
-                    case _:
-                        color_display = ""
+                if unit.get_hit>0:
+                    unit.get_hit -= 1
+                    color_display = ""
+                else:
+                    match unit.team:
+                        case 0:
+                            color_display = "R"
+                        case 1:
+                            color_display = "B"
+                        case _:
+                            color_display = ""
                         
 
                 # On charge le sprite si il n'existe pas encore
