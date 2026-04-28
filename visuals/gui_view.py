@@ -82,7 +82,7 @@ class GUI_view:
         self.dezoom_limit = self.max_size[0] // self.size_map[0]/2 / TILE_W
         self.dezoom_activate = False
 
-        self.all_units : list[Unit] = None
+        self.all_units : list[Unit] = []
 
     def move(self, dx : int, dy : int):
         """Permet de deplacer l'affichage de la map (appel apres detection de ZQSD)"""
@@ -259,7 +259,7 @@ class GUI_view:
             # On choisi la couleur d'affichage
             if unit.is_alive:
                 if unit.get_hit>0:
-                    unit.get_hit -= 1/fps
+                    unit.get_hit -= 1/60
                     color_display = ""
                 else:
                     match unit.team:
@@ -465,10 +465,6 @@ class GUI_view:
 
     def display(self, map: Map, battle_infos: dict):
         """ Return True si il faut continuer a afficher et False si il faut quitter le gui"""
-        if self.all_units is None:
-            self.all_units = []
-            for (x, y) in map.map:
-                self.all_units.append(map.get_unit(x, y))
 
         self.screen.fill((0,0,0))
         

@@ -49,11 +49,13 @@ class BattleCLI:
         create_parser = subparsers.add_parser("create", help="Create a scenario with 1 ia.")
         create_parser.add_argument("scenario", help="Scenario name or file to use")
         create_parser.add_argument("ia", help="Name of ia")
+        create_parser.add_argument("ipc_port", help="Number of IPC Port")
 
         # === battle join <IP> <ia> ===
         join_parser = subparsers.add_parser("join", help="Join a game with 1 ia.")
         join_parser.add_argument("IP", help="IP of the game to join")
         join_parser.add_argument("ia", help="Name of ia")
+        join_parser.add_argument("ipc_port", help="Number of IPC Port")
         
         self.parser = parser
 
@@ -87,13 +89,13 @@ class BattleCLI:
     def cmd_create(self, args):
         print(f"[CREATE] Scenario: {args.scenario}")
         print(f"      ia: {args.ia}")
-        engine = Engine(args.scenario, args.ia, None)
+        engine = Engine(args.scenario, args.ia, int(args.ipc_port))
         engine.game_loop()
     
     def cmd_join(self, args):
         print(f"[JOIN] IP: {args.IP}")
         print(f"      ia: {args.ia}")
-        engine = Engine(None, args.ia, args.IP)
+        engine = Engine(None, args.ia, int(args.ipc_port))
         engine.game_loop()
 
 
