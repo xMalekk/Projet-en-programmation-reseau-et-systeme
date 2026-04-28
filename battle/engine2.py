@@ -69,23 +69,6 @@ class Engine:
         self.max_turns = 40000
         self.turn_fps = 0
         self.time_turn = 0
-       
-    def initialize_game(self):
-        if self.IP :
-            self.bridge.add_peer(self.IP)
-        """donner IP pour celui qui rejoint, initialiser partie"""
-        if self.game_map is None:
-            self.game_map = Map(self.bridge, self.team)
-            
-            # Pour la version "concurrence sauvage", on force le placement de quelques unités aléatoires pour le nouvel arrivant afin de tester les incohérences.
-            import random
-            for i in range(5): 
-                x, y = random.randint(10, 40), random.randint(10, 40)
-                # Ceci va automatiquement déclencher l'envoi de UNIT_SPAWN grâce à votre code dans map.py !
-                self.game_map.add_unit(x, y, 'C', f"{self.team}_joiner_{i}", self.team)
-
-        # On annonce notre arrivée à tout le monde sur le réseau
-        self.bridge.send_event("JOIN", self.team)
     
     def initialize_ai(self):
         """Initialise les deux IA"""
@@ -173,14 +156,7 @@ class Engine:
 ##########################################################################
 
     def apply_ennemy_order(self, event):
-        if event[0] == "JOIN":
-            print(f"[RESEAU] Le joueur {event[1]} a rejoint la partie ! Renvoi des unités locales...")
-            # L'adversaire vient d'arriver, on re-broadcast toutes nos unités
-            # pour qu'elles apparaissent sur son écran.
-            for (x, y), unit in self.game_map.map.items():
-                if unit is not None and unit.team == self.team:
-                    self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, x, y)
-        elif event[0] == "UNIT_SPAWN":
+        if event[0] == "UNIT_SPAWN":
             self.game_map.add_unit(event[4], event[5], event[1], event[3], event[2])
             self.units.append(self.game_map.get_unit(event[4], event[5]))
             self.view.all_units.append(self.game_map.get_unit(event[4], event[5]))

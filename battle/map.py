@@ -62,7 +62,10 @@ class Map:
             self.map.pop((x, y), None)
     
     def get_unit_by_id(self, unit_id):
-        return [self.map[pos] for pos in self.map if self.map[pos].id == unit_id][0]
+        unit_in_list = [self.map[pos] for pos in self.map if self.map[pos].id == unit_id]
+        if unit_in_list:
+            return unit_in_list[0]
+        return None
 
     def load(self, scenario_name):
         """"Charge une carte depuis un scénario donné ou un fichier de sauvegarde"""
