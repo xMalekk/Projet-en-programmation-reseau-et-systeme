@@ -3,6 +3,7 @@ from battle.map import Map
 from battle.unit import Unit
 from battle.projectile import Projectile
 from random import randint
+from collections import Counter, defaultdict
 import os
 import json
 
@@ -37,6 +38,14 @@ SIZE_HEALTH_BAR = (15,3)
 SIZE_PROJECTILE = 4
 
 SIZE_PROJECTILE_JAVELOT = 7
+
+UNIT_TYPE_ORDER = ("P", "K", "C", "L", "S")
+TEAM_HUD = {
+    0: ("Red", (255, 90, 90)),
+    1: ("Blue", (90, 150, 255)),
+    "R": ("Red", (255, 90, 90)),
+    "B": ("Blue", (90, 150, 255)),
+}
 
 with open("data/units_sprites/offset_img.json", "r") as f:
     SPRITES_OFFSET = json.load(f)
@@ -467,6 +476,42 @@ class GUI_view:
             text = self.big_font.render("PAUSE", 1, "white")
             self.screen.blit(text, ((self.max_size[0]-text.get_size()[0])//2, (self.max_size[1]-text.get_size()[1])//2))
 
+    def get_units_count_by_team(self):
+        counts = defaultdict(Counter)
+        for unit in self.all_units:
+            if unit is not None and unit.is_alive:
+                counts[unit.team][unit.type] += 1
+        return counts
+
+    def display_units_count_hud(self):
+        counts = self.get_units_count_by_team()
+        teams = [team for team in (0, 1, "R", "B") if team in counts]
+        if not teams:
+            return
+
+        padding = 8
+        line_height = self.font.get_height() + 3
+        lines = []
+        title = self.font.render("Units left", 1, "white")
+        lines.append((title, (255, 255, 255)))
+
+        for team in teams:
+            team_name, color = TEAM_HUD.get(team, (str(team), (255, 255, 255)))
+            unit_counts = "  ".join(f"{unit_type}:{counts[team][unit_type]}" for unit_type in UNIT_TYPE_ORDER)
+            line = self.font.render(f"{team_name}  {unit_counts}", 1, color)
+            lines.append((line, color))
+
+        panel_width = max(line.get_width() for line, _ in lines) + padding * 2
+        panel_height = len(lines) * line_height + padding * 2
+        panel = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        panel.fill((0, 0, 0, 150))
+        self.screen.blit(panel, (10, 10))
+
+        y = 10 + padding
+        for line, _ in lines:
+            self.screen.blit(line, (10 + padding, y))
+            y += line_height
+
 
     def display(self, map: Map, battle_infos: dict):
         """ Return True si il faut continuer a afficher et False si il faut quitter le gui"""
@@ -482,6 +527,8 @@ class GUI_view:
         self.display_mini_map(map)
         
         self.display_game_infos(battle_infos)
+
+        self.display_units_count_hud()
 
         pygame.display.flip()
 
