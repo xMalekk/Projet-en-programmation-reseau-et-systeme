@@ -74,10 +74,13 @@ class Map:
         self.p, self.q = newp, newq
         for i in range(len(scenario)):
             x, y, type = scenario[i]
-            if self.team == 1:
+            if self.team == 1 or self.team == 3:
                 x = self.p - x
+            if self.team == 2 or self.team == 3:
+                y = self.q - y
             id = str(self.team) + str(i)
             self.add_unit(x, y, type, id, self.team)
+
 
 
     #############################
