@@ -307,6 +307,8 @@ class Map:
 
         unit.time_reset()
         target.take_damage(unit)
+        if target.is_dead():
+            self.bridge.send_event("KILL_UNIT", target.id )
         # set cooldown
 
         return
@@ -432,6 +434,8 @@ class Map:
 
             if dist_2 < (unit.size) ** 2:
                 unit.take_damage(projectile.shooter)
+                if unit.is_dead():
+                    self.bridge.send_event("KILL_UNIT", unit.id )
                 return True
 
         return False

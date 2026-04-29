@@ -161,6 +161,13 @@ class Engine:
 ##########################################################################
 
     def apply_ennemy_order(self, event):
+        if event[0] == "KILL_UNIT":
+                unit = self.game_map.get_unit_by_id(event[1])
+                unit.is_alive = False
+                unit.state= "dead"
+                unit.target = None
+                unit.current_hp = 0
+
         if event[0] == "UNIT_SPAWN":
             self.game_map.add_unit(event[4], event[5], event[1], event[3], event[2])
             self.units.append(self.game_map.get_unit(event[4], event[5]))
