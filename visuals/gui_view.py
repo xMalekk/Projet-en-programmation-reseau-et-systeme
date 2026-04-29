@@ -76,7 +76,9 @@ class GUI_view:
         self.bg_img_x = pygame.transform.flip(self.bg_img, 1, 0)
         self.bg_img_y = pygame.transform.flip(self.bg_img, 0, 1)
         self.bg_img_xy = pygame.transform.flip(self.bg_img, 1, 1)
-        
+
+        self.rock_img = pygame.image.load(f"data/pierre.png")
+        self.rock_size=self.rock_img.get_size()
 
         self.screen = pygame.display.set_mode(self.max_size)
         self.size_health_bar = SIZE_HEALTH_BAR
@@ -127,7 +129,8 @@ class GUI_view:
         self.bg_img_x = pygame.transform.flip(self.bg_img, 1, 0)
         self.bg_img_y = pygame.transform.flip(self.bg_img, 0, 1)
         self.bg_img_xy = pygame.transform.flip(self.bg_img, 1, 1)
-    
+        self.rock_img=pygame.transform.scale(pygame.image.load("data/pierre.png"),(int(self.rock_size[0]*zoom_factor),int(self.rock_size[1]*zoom_factor)))
+        
 
     def handle_input(self):
         keys = pygame.key.get_pressed()
@@ -268,6 +271,9 @@ class GUI_view:
         self.all_units.sort(key=lambda u: u.position[0] + u.position[1])
         for unit in self.all_units: 
             (x, y) = unit.position
+            if unit.type == None:
+                self.screen.blit(self.rock_img,unit.position)
+                continue
             if unit is None:
                 continue
 
