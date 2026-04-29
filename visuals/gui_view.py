@@ -77,7 +77,8 @@ class GUI_view:
         self.bg_img_y = pygame.transform.flip(self.bg_img, 0, 1)
         self.bg_img_xy = pygame.transform.flip(self.bg_img, 1, 1)
 
-        self.rock_img = pygame.image.load(f"data/pierre.png")
+        self.rock_im = pygame.image.load(f"data/pierre.png")
+        self.rock_img = pygame.transform.smoothscale(self.rock.im,(48,48))
         self.rock_size=self.rock_img.get_size()
 
         self.screen = pygame.display.set_mode(self.max_size)
