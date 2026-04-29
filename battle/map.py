@@ -90,7 +90,9 @@ class Map:
                 y = self.q - y
             id = str(self.team) + str(i)
             self.add_unit(x, y, type, id, self.team)
-
+        while len(self.roches<4):
+            addrocks(self.team,randint(2,p),randint(2,q))
+        
 
 
     #############################
