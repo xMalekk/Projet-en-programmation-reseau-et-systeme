@@ -110,7 +110,7 @@ static bool same_peer(const struct sockaddr_in *a, const struct sockaddr_in *b) 
            a->sin_port == b->sin_port;
 }
 
-static void udp_router_add_peer(UdpRouter *router, const struct sockaddr_in *addr) {
+static void udp_router_add_peer(UdpRouter *router,   const struct sockaddr_in *addr) {
     if (!router || router->fd < 0 || !addr) return;
     for (size_t i = 0; i < router->peer_count; ++i) {
         if (same_peer(&router->peers[i], addr)) {
