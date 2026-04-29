@@ -1,6 +1,7 @@
 from collections import defaultdict
 import random
 import os
+import time
 from math import sqrt, atan2
 from battle.unit import Unit
 from battle.projectile import Projectile
@@ -38,7 +39,7 @@ class Map:
 
     marge = 1.01  # Facteur de marge pour la détection de collision (pour éviter que les unités se touchent de trop près)
 
-    def add_unit(self, x, y, type, id, team):
+    def add_unit(self, x, y, type, id, team, announce=True):
         """Permet d'ajouter une unité à la carte aux coordonnées (x, y)"""
         unit = Unit().get_by_type(id, type, team, (x, y))
         # if unit.size <= x < self.p - unit.size and unit.size <= y < self.q - unit.size:
@@ -49,7 +50,7 @@ class Map:
         #                 return  # Collision détecté, n'ajoute pas l'unité
         self.map[(x, y)] = unit
         # Envoi message Unit_Spawn
-        if unit.team == self.team:
+        if announce and unit.team == self.team:
             self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, x, y)
 
     #def get_unit(self, x, y):
@@ -66,6 +67,66 @@ class Map:
         if unit_in_list:
             return unit_in_list[0]
         return None
+
+    def make_request_id(self):
+        return f"{self.team}-{time.time_ns()}"
+
+    def request_property(self, unit_id, action, *args):
+        request_id = self.make_request_id()
+        self.bridge.send_event("PROPERTY_REQUEST", request_id, self.team, unit_id, action, list(args))
+        return request_id
+
+    def serialize_unit_state(self, unit):
+        if unit is None:
+            return None
+        target_id = unit.target.id if unit.target is not None else None
+        return {
+            "id": unit.id,
+            "type": unit.type,
+            "team": unit.team,
+            "position": [unit.position[0], unit.position[1]],
+            "current_hp": unit.current_hp,
+            "max_hp": unit.max_hp,
+            "is_alive": unit.is_alive,
+            "state": unit.state,
+            "target_id": target_id,
+            "direction": list(unit.direction) if unit.direction is not None else None,
+            "orientation": unit.orientation,
+            "network_owner": unit.network_owner,
+            "property_version": unit.property_version,
+            "time_until_next_attack": unit.time_until_next_attack,
+            "time_before_next_attack": unit.time_before_next_attack,
+        }
+
+    def apply_unit_state(self, state):
+        if not state:
+            return None
+
+        unit = self.get_unit_by_id(state["id"])
+        position = tuple(state["position"])
+        if unit is None:
+            self.add_unit(position[0], position[1], state["type"], state["id"], state["team"], announce=False)
+            unit = self.get_unit_by_id(state["id"])
+            if unit is None:
+                return None
+        elif position != unit.position:
+            self.map.pop(unit.position, None)
+            self.map[position] = unit
+            unit.position = position
+
+        unit.current_hp = state["current_hp"]
+        unit.max_hp = state["max_hp"]
+        unit.is_alive = state["is_alive"]
+        unit.state = state["state"]
+        unit.direction = tuple(state["direction"]) if state["direction"] is not None else None
+        unit.orientation = state["orientation"]
+        unit.network_owner = state["network_owner"]
+        unit.property_version = state["property_version"]
+        unit.time_until_next_attack = state["time_until_next_attack"]
+        unit.time_before_next_attack = state["time_before_next_attack"]
+        target_id = state.get("target_id")
+        unit.target = self.get_unit_by_id(target_id) if target_id else None
+        return unit
 
     def load(self, scenario_name):
         """"Charge une carte depuis un scénario donné ou un fichier de sauvegarde"""
@@ -101,9 +162,11 @@ class Map:
             self.bridge.send_event("UNIT_MOVE", unit.id, dest[0], dest[1])
 
     def move_unit(self, unit, dest, depth=0, R=1 / 60, property=None):
-        
-        if not property :
-            self.bridge.send_event("PROPERTY_REQUEST", unit.id, "move", dest[0], dest[1])
+        if unit is None or not unit.is_alive:
+            return None
+
+        if not property and unit.network_owner != self.team:
+            self.request_property(unit.id, "move", dest[0], dest[1])
             return None
         
         """Permet de déplacer une unité dans la direction de dest, légalement avec résolution des collisions"""
@@ -287,10 +350,14 @@ class Map:
     #  Partie Projectiles et fonction attack(unit,target)  #
     ########################################################
 
-    def attack2(self, unit, target, property=None):
-        if not property :
-            self.bridge.send_event("PROPERTY_REQUEST", unit.id, "attack", target.id)
+    def attack2(self, unit, target, property=None, broadcast=True):
+        if unit is None or target is None or not unit.is_alive or not target.is_alive:
             return None
+
+        if not property and target.network_owner != self.team:
+            self.request_property(target.id, "attack", unit.id, target.id)
+            return None
+
         if not unit.can_attack(target):
             return None  # Ne peut pas attaquer
         if unit.time_before_next_attack > 0:
@@ -305,13 +372,15 @@ class Map:
         angle = atan2(target.position[1] - unit.position[1], target.position[0] - unit.position[0]) + 3.15
         unit.orientation = (round(angle * 8 / 6.28) + 3) % 8
 
-        if unit.team == self.team:
+        if broadcast and unit.team == self.team:
             self.bridge.send_event("UNIT_ATTACK", unit.id, unit.target.id)
 
         if unit.type in ('C', 'S'):
             self.fire_projectile(unit, target)
         else:
             target.take_damage(unit)
+            if broadcast and unit.team == self.team:
+                self.bridge.send_event("UNIT_STATE", self.serialize_unit_state(target))
 
         unit.time_reset()
 
@@ -439,6 +508,8 @@ class Map:
 
             if dist_2 < (unit.size) ** 2:
                 unit.take_damage(projectile.shooter)
+                if projectile.shooter.team == self.team:
+                    self.bridge.send_event("UNIT_STATE", self.serialize_unit_state(unit))
                 return True
 
         return False

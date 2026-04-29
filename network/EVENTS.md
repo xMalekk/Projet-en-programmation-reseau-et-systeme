@@ -26,10 +26,10 @@ Tous les messages échangés entre Python ⇄ démon C et entre pairs distants u
 | `UNIT_MOVE` | `{ from:{x,y}, to:{x,y} }` | Informe les pairs d’un déplacement. |
 | `UNIT_STATE` | `{ position:{x,y}, hp, status, target }` | Rafraîchit périodiquement l’état pour corriger les divergences. |
 | `UNIT_ATTACK` | `{ attacker, target }` | Signale un coup porté (corps-à-corps ou projectile). |
-| `PROPERTY_REQUEST` | `{ request_id, requester, unit_id, action, args }` | Demande la propriété réseau d’une unité avant d’exécuter l’action. |
-| `PROPERTY_GRANT` | `{ request_id, owner, unit_id, state, action, args }` | Transfère la propriété et fournit l’état cohérent. |
-| `PROPERTY_DENY` | `{ request_id, owner, unit_id, reason, state? }` | Refus d’une demande (unité détruite, autre action prioritaire, etc.). |
-| `PROPERTY_RELEASE` | `{ unit_id, owner, next_owner? }` | Rend volontairement la propriété après une action. |
+| `PROPERTY_REQUEST` | `{ request_id, requester, unit_id, action, args }` | Demande la propriété réseau d’une unité avant d’exécuter l’action. `unit_id` est la ressource à verrouiller. |
+| `PROPERTY_GRANT` | `{ request_id, requester, owner, unit_id, state, action, args }` | Transfère la propriété et fournit l’état cohérent. Le demandeur revalide ensuite l’action. |
+| `PROPERTY_DENY` | `{ request_id, owner, unit_id, reason, state? }` | Refus d’une demande (unité détruite, inconnue, autre propriétaire, etc.). |
+| `PROPERTY_RELEASE` | `{ request_id, owner, unit_id, next_owner, state }` | Rend la propriété après l’action et diffuse l’état résultant. |
 | `REPORT` | `{ kind, data }` | Événements hors combat (rapports, sauvegardes, pause). |
 | `SHUTDOWN` | `{}` | Demande d’arrêter la session proprement. |
 

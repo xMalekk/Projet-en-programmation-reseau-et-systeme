@@ -138,6 +138,7 @@ class Engine:
     def process_turn(self):
         """Traite un tour de jeu (déplacements, combats, etc.)"""
         # recevoir les info de mouvements et attaques du distant, et autres
+        self.pump_network_events()
         self.update_units(1 / 60)
         self.update_projectiles()
         for unit in self.units:
@@ -146,25 +147,36 @@ class Engine:
             if unit.team == self.ia.team:
                 self.ia.play_turn(unit, self.current_turn)
         
+        self.pump_network_events()
+            
+
+##########################################################################
+
+    def pump_network_events(self):
         while True:
             event = self.bridge.receive_event()
             if not event:
                 break
             self.apply_ennemy_order(event)
-            
-
-##########################################################################
 
     def apply_ennemy_order(self, event):
         if event[0] == "UNIT_SPAWN":
-            self.game_map.add_unit(event[4], event[5], event[1], event[3], event[2])
-            self.units.append(self.game_map.get_unit(event[4], event[5]))
-            self.view.all_units.append(self.game_map.get_unit(event[4], event[5]))
-            self.ia.ack_unit(self.game_map.get_unit(event[4], event[5]))
+            unit = self.game_map.get_unit_by_id(event[3])
+            if unit is None:
+                self.game_map.add_unit(event[4], event[5], event[1], event[3], event[2])
+                unit = self.game_map.get_unit(event[4], event[5])
+                self.units.append(unit)
+                self.view.all_units.append(unit)
+                self.ia.ack_unit(unit)
         elif event[0] == "UNIT_MOVE":
-            self.game_map.move_unit(self.game_map.get_unit_by_id(event[1]), (event[2], event[3]), property=True)
+            unit = self.game_map.get_unit_by_id(event[1])
+            self.game_map.move_unit(unit, (event[2], event[3]), property=True)
         elif event[0] == "UNIT_ATTACK":
-            self.game_map.attack2(self.game_map.get_unit_by_id(event[1]), self.game_map.get_unit_by_id(event[2]), property=True)
+            attacker = self.game_map.get_unit_by_id(event[1])
+            target = self.game_map.get_unit_by_id(event[2])
+            self.game_map.attack2(attacker, target, property=True, broadcast=False)
+        elif event[0] == "UNIT_STATE":
+            self.game_map.apply_unit_state(event[1])
         elif event[0] == "JOIN":
             self.nbr_joueurs += 1
             self.bridge.send_event("ACCEPT", self.nbr_joueurs, self.scenario_name)
@@ -173,21 +185,68 @@ class Engine:
                 if unit.team == self.team:
                     self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, unit.position[0], unit.position[1])
         elif event[0] == "PROPERTY_REQUEST":
-            if self.game_map.get_unit_by_id(event[1]).is_alive :
-                if event[2] == "attack" :
-                    self.bridge.send_event("PROPERTY_GRANT", event[1], event[2], event[3])
-                elif event[2] == "move" :
-                    self.bridge.send_event("PROPERTY_GRANT", event[1], event[2], event[3], event[4])
-            else :
-                self.bridge.send_event("PROPERTY_DENY", event[1])
+            self.handle_property_request(event)
         elif event[0] == "PROPERTY_GRANT":
-            if event[2] == "attack" :
-                self.game_map.attack2(self.game_map.get_unit_by_id(event[1]), self.game_map.get_unit_by_id(event[3]), property=True)
-            elif event[2] == "move" :
-                self.game_map.move_unit(self.game_map.get_unit_by_id(event[1]), (event[3], event[4]), property=True)
+            self.handle_property_grant(event)
         elif event[0] == "PROPERTY_DENY":
-            self.game_map.get_unit_by_id(event[1]).is_alive = False 
-            self.game_map.get_unit_by_id(event[1]).current_hp = 0
+            self.handle_property_deny(event)
+        elif event[0] == "PROPERTY_RELEASE":
+            self.handle_property_release(event)
+
+    def handle_property_request(self, event):
+        _, request_id, requester, unit_id, action, action_args = event
+        unit = self.game_map.get_unit_by_id(unit_id)
+        if unit is None:
+            return
+        if unit.network_owner != self.team:
+            return
+        if not unit.is_alive:
+            state = self.game_map.serialize_unit_state(unit)
+            self.bridge.send_event("PROPERTY_DENY", request_id, self.team, unit_id, "dead_unit", state)
+            return
+
+        unit.network_owner = requester
+        unit.property_version += 1
+        state = self.game_map.serialize_unit_state(unit)
+        self.bridge.send_event("PROPERTY_GRANT", request_id, requester, self.team, unit_id, state, action, action_args)
+
+    def handle_property_grant(self, event):
+        _, request_id, requester, owner, unit_id, state, action, action_args = event
+        unit = self.game_map.apply_unit_state(state)
+        if requester != self.team:
+            return
+        if unit is None or not unit.is_alive:
+            return
+
+        if action == "move":
+            self.game_map.move_unit(unit, (action_args[0], action_args[1]), property=True)
+            released_unit = unit
+        elif action == "attack":
+            attacker = self.game_map.get_unit_by_id(action_args[0])
+            target = self.game_map.get_unit_by_id(action_args[1])
+            self.game_map.attack2(attacker, target, property=True, broadcast=False)
+            released_unit = target
+        else:
+            return
+
+        if released_unit is None:
+            return
+        released_unit.network_owner = released_unit.team
+        released_unit.property_version += 1
+        release_state = self.game_map.serialize_unit_state(released_unit)
+        self.bridge.send_event("PROPERTY_RELEASE", request_id, self.team, unit_id, released_unit.network_owner, release_state)
+
+    def handle_property_deny(self, event):
+        _, request_id, owner, unit_id, reason, state = event
+        if state:
+            self.game_map.apply_unit_state(state)
+        print(f"[property] demande {request_id} refusée pour {unit_id}: {reason}")
+
+    def handle_property_release(self, event):
+        _, request_id, owner, unit_id, next_owner, state = event
+        unit = self.game_map.apply_unit_state(state)
+        if unit is not None:
+            unit.network_owner = next_owner
 
     def update_units(self,time_per_tick):
         for unit in self.units:
@@ -200,8 +259,8 @@ class Engine:
         """Vérifie les conditions de victoire"""
         #  Toutes les unités d'un camp détruites
 
-        units_team1 = len([u for u in self.units if u.team == 'R' and u.is_alive])
-        units_team2 = len([u for u in self.units if u.team == 'B' and u.is_alive])
+        units_team1 = len([u for u in self.units if u.team == 0 and u.is_alive])
+        units_team2 = len([u for u in self.units if u.team == 1 and u.is_alive])
 
         # selection du winner gagne si tout les adverse sont mort
         if units_team1 == 0 and units_team2 == 0:

@@ -25,6 +25,8 @@ class Unit:
         self.position = position  # (x,y)
         self.destination = None
         self.team = team
+        self.network_owner = team
+        self.property_version = 0
         self.squad = []
         self.squad.append(self)
         self.get_hit = 0
@@ -68,6 +70,8 @@ class Unit:
 
         self.type = type
         self.team = team
+        self.network_owner = team
+        self.property_version = 0
         self.position = position
 
         # Stats vitales
