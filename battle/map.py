@@ -17,6 +17,9 @@ class Map:
         self.q = q
         self.map = defaultdict(lambda: None, {})
         self.projectiles = []
+        self.pending_property_requests = {}
+        self.pending_property_keys = {}
+        self.property_request_timeout = 0.5
 
     def distance(self, pos1, pos2):
         """Calcule la distance entre deux positions"""
@@ -63,18 +66,40 @@ class Map:
             self.map.pop((x, y), None)
 
     def get_unit_by_id(self, unit_id):
-        unit_in_list = [self.map[pos] for pos in self.map if self.map[pos].id == unit_id]
-        if unit_in_list:
-            return unit_in_list[0]
+        for unit in self.map.values():
+            if unit is not None and unit.id == unit_id:
+                return unit
         return None
 
     def make_request_id(self):
         return f"{self.team}-{time.time_ns()}"
 
     def request_property(self, unit_id, action, *args):
+        now = time.time()
+        expired_requests = [
+            request_id
+            for request_id, (_, _, sent_at) in self.pending_property_requests.items()
+            if now - sent_at > self.property_request_timeout
+        ]
+        for request_id in expired_requests:
+            self.clear_property_request(request_id)
+
+        key = (unit_id, action, tuple(args))
+        if key in self.pending_property_keys:
+            return self.pending_property_keys[key]
+
         request_id = self.make_request_id()
+        self.pending_property_requests[request_id] = (key, unit_id, now)
+        self.pending_property_keys[key] = request_id
         self.bridge.send_event("PROPERTY_REQUEST", request_id, self.team, unit_id, action, list(args))
         return request_id
+
+    def clear_property_request(self, request_id):
+        request = self.pending_property_requests.pop(request_id, None)
+        if request is None:
+            return
+        key, _, _ = request
+        self.pending_property_keys.pop(key, None)
 
     def serialize_unit_state(self, unit):
         if unit is None:
@@ -352,6 +377,10 @@ class Map:
 
     def attack2(self, unit, target, property=None, broadcast=True):
         if unit is None or target is None or not unit.is_alive or not target.is_alive:
+            return None
+
+        if not property and unit.network_owner != self.team:
+            self.request_property(unit.id, "attack", unit.id, target.id)
             return None
 
         if not property and target.network_owner != self.team:

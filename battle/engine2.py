@@ -144,7 +144,7 @@ class Engine:
         for unit in self.units:
             if not unit.is_alive:
                 continue
-            if unit.team == self.ia.team:
+            if unit.team == self.ia.team and unit.network_owner == self.team:
                 self.ia.play_turn(unit, self.current_turn)
         
         self.pump_network_events()
@@ -215,6 +215,7 @@ class Engine:
         unit = self.game_map.apply_unit_state(state)
         if requester != self.team:
             return
+        self.game_map.clear_property_request(request_id)
         if unit is None or not unit.is_alive:
             return
 
@@ -224,8 +225,12 @@ class Engine:
         elif action == "attack":
             attacker = self.game_map.get_unit_by_id(action_args[0])
             target = self.game_map.get_unit_by_id(action_args[1])
-            self.game_map.attack2(attacker, target, property=True, broadcast=False)
-            released_unit = target
+            if unit_id == action_args[0]:
+                self.game_map.attack2(attacker, target)
+                released_unit = attacker
+            else:
+                self.game_map.attack2(attacker, target, property=True, broadcast=False)
+                released_unit = target
         else:
             return
 
@@ -238,6 +243,7 @@ class Engine:
 
     def handle_property_deny(self, event):
         _, request_id, owner, unit_id, reason, state = event
+        self.game_map.clear_property_request(request_id)
         if state:
             self.game_map.apply_unit_state(state)
         print(f"[property] demande {request_id} refusée pour {unit_id}: {reason}")
