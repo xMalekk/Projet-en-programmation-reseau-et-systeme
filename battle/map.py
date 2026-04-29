@@ -5,6 +5,7 @@ from math import sqrt, atan2
 from battle.unit import Unit
 from battle.projectile import Projectile
 from battle.scenario import Scenario
+import itertools
 
 TIME_RESOLUTION = 1/30
 
@@ -17,6 +18,7 @@ class Map:
         self.p = p
         self.q = q
         self.map = defaultdict(lambda: None, {})
+        self.roches = defaultdict(lambda : None, {})
         self.projectiles = []
 
     def distance(self, pos1, pos2):
@@ -54,6 +56,12 @@ class Map:
         if unit.team == self.team:
             self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, x, y)
 
+    def addrocks(self,x,y,team):
+        unit = Roche().get_by_type(team,(x,y))
+        collision = collision(self,unit,(x,y),0)
+        self.roches[(x,y)] = unit
+        if unit.team == self.team: 
+            self.bridge.send_event("UNIT_SPAWN", unit.type, unit.team, unit.id, x, y)
     #def get_unit(self, x, y):
     #    """Permet de récupérer l'unité à la position (x, y)"""
     #    return self.map.get((x, y), None)
@@ -260,7 +268,7 @@ class Map:
 
                 # Éviter le vecteur nul 
                 if dx == 0 and dy == 0:
-                    dx, dy = 0, 1  #arbitrairement j'ai choisi de considerer ca comme une colision depuis le SUD
+                    dx, dy = 0, 1 #arbitrairement j'ai choisi de considerer ca comme une colision depuis le SUD
                     return dx, dy
 
                 #magnitude = sqrt(dist_2)
@@ -273,6 +281,8 @@ class Map:
                     r = (unit_size / other_unit.size)
                     other_unit_dest = (other_unit.position[0] - (dx * r), other_unit.position[1] - (dy * r))
                     self.move_unit(other_unit, other_unit_dest, depth + 1)
+                if unit.type == None:
+                    remove_unit(other_unit.position[0],other_unit.position[1])
                 return dx, dy  # Collision détectée avec sa direction
 
         # Vérifier si la destination est hors de la carte
