@@ -6,6 +6,8 @@ from battle.unit import Unit
 from battle.projectile import Projectile
 from battle.scenario import Scenario
 
+TIME_RESOLUTION = 1/30
+
 
 class Map:
     def __init__(self, bridge, team,  p=50, q=50):
@@ -103,7 +105,7 @@ class Map:
         if unit.team == self.team:
             self.bridge.send_event("UNIT_MOVE", unit.id, dest[0], dest[1])
 
-    def move_unit(self, unit, dest, depth=0, R=1 / 60, property=None):
+    def move_unit(self, unit, dest, depth=0, R=TIME_RESOLUTION, property=None):
         
         if not property :
             self.bridge.send_event("PROPERTY_REQUEST", unit.id, "move", dest[0], dest[1])
@@ -379,12 +381,12 @@ class Map:
         else:
             # Calcul de la position future
             target_pos = (bx + target_vx * t, by + target_vy * t)
-        if random.random() < 0.25:
+        '''if random.random() < 0.25:
             rng = random.uniform(1.2, 3) * random.choice([-1, 1])
             target_pos = (
                 target_pos[0] + rng,
                 target_pos[1] + rng * random.choice([-1, 1])
-            )
+            )'''
 
         if type == 'C':
             return self.add_Arrow(shooter, target_pos, self.distance(shooter.position, target_pos))
@@ -396,7 +398,7 @@ class Map:
         # Place le projectile à sa nouvelle position
 
         proj.position = dest
-        proj.travel_dist += proj.speed / 60
+        proj.travel_dist += proj.speed * TIME_RESOLUTION
 
     def add_Arrow(self, shooter, target_pos, distance):
         """Permet d'ajouter une flèche à la carte aux coordonnées (x, y)"""
@@ -417,8 +419,8 @@ class Map:
                 self.destroy_projectile(projectile)
                 return None
 
-            x_step = projectile.speed * projectile.direction[0] / 60
-            y_step = projectile.speed * projectile.direction[1] / 60
+            x_step = projectile.speed * projectile.direction[0] * TIME_RESOLUTION
+            y_step = projectile.speed * projectile.direction[1] * TIME_RESOLUTION
 
             next_x = projectile.position[0] + x_step
             next_y = projectile.position[1] + y_step

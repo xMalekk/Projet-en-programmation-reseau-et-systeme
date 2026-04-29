@@ -1,7 +1,7 @@
 import json
 import os
 import math
-
+TIME_RESOLUTION = 1/30
 class Unit:
     #on crée une variable dans laquelle on met le contenu de units.json ; agit comme une mémoire cache qui nous évite d'avoir à rouvrir le fichier chaque fois qu'on a besoin de piocher des données dedans
     UNIT_CONFIG = {}
@@ -127,7 +127,7 @@ class Unit:
         #soustraction aux points de vie
         total_damage=max(1,total_damage)
         self.current_hp -= total_damage
-        self.get_hit = 0.2
+        self.get_hit = 0.1
         # HP n'est jamais negatif
         if self.current_hp < 0:
             self.current_hp = 0
@@ -206,7 +206,7 @@ class Unit:
             self.time_until_next_attack = self.reload_time
             self.time_before_next_attack = self.attack_delay
         # update time 
-    def update(self, time_passed):
+    def update(self, time_passed = TIME_RESOLUTION):
             # Si l'unité est morte, elle ne peut rien faire
             if self.is_dead():
                 self.is_alive = False

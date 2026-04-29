@@ -56,12 +56,12 @@ class Engine:
 
         self.star_execution_time = None
         # frame rate controles
-        self.max_fps = 60  # <-- FPS MAX pas besoin de plus ca fait trop de fluctuation sinon
+        self.max_fps = 30  # <-- FPS MAX pas besoin de plus ca fait trop de fluctuation sinon
         self.min_fps = 10  # <-- FPS MIN
         self.min_frame_delay = 1 / self.max_fps 
         self.max_frame_delay = 1 / self.min_fps
         # tick rate / limit
-        self.tps = 60  # <-- target TPS: Vitesse du jeu [= 60 pour un time scale =1 ] /!\ la moyenne reste toujours sous cette valeur... /!\
+        self.tps = 30  # <-- target TPS: Vitesse du jeu [= 60 pour un time scale =1 ] /!\ la moyenne reste toujours sous cette valeur... /!\
         self.turn_time_target = 1.0 / self.tps  # en secondes
         self.star_execution_time = None
         self.turn_time = 0
@@ -138,7 +138,7 @@ class Engine:
     def process_turn(self):
         """Traite un tour de jeu (déplacements, combats, etc.)"""
         # recevoir les info de mouvements et attaques du distant, et autres
-        self.update_units(1 / 60)
+        self.update_units()
         self.update_projectiles()
         for unit in self.units:
             if not unit.is_alive:
@@ -189,9 +189,9 @@ class Engine:
             self.game_map.get_unit_by_id(event[1]).is_alive = False 
             self.game_map.get_unit_by_id(event[1]).current_hp = 0
 
-    def update_units(self,time_per_tick):
+    def update_units(self):
         for unit in self.units:
-            unit.update(time_per_tick)
+            unit.update()
 
     def update_projectiles(self):
             self.game_map.update_projectiles()
