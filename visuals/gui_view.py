@@ -100,7 +100,7 @@ class GUI_view:
         self.dezoom_limit = self.max_size[0] // self.size_map[0]/2 / TILE_W
         self.dezoom_activate = False
 
-        self.all_units : list[Unit] = []
+        self.all_units : list[Unit | Roche] = []
 
     def move(self, dx : int, dy : int):
         """Permet de deplacer l'affichage de la map (appel apres detection de ZQSD)"""
