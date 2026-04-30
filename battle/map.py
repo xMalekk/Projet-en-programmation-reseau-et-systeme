@@ -3,6 +3,7 @@ import random
 import os
 from math import sqrt, atan2
 from battle.unit import Unit
+from battle.obstacles import Roche
 from battle.projectile import Projectile
 from battle.scenario import Scenario
 import itertools
