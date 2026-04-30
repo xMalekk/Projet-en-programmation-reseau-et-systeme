@@ -1,6 +1,7 @@
 import pygame
 from battle.map import Map
 from battle.unit import Unit
+from battle.obstacles import Roche
 from battle.projectile import Projectile
 from random import randint
 from collections import Counter, defaultdict
